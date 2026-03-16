@@ -4,7 +4,8 @@
 \usepackage[a4paper]{geometry}
 \geometry{margin=2.5cm}
 \usepackage[skip=0.8em]{parskip}
-\usepackage{fourier}
+\usepackage{lmodern}              % Latin Modern — matches official HÍ template
+\usepackage{fixcmex}              % Fix Latin Modern large symbol math font sizing
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[icelandic,english]{babel}
@@ -15,6 +16,10 @@
 \titlespacing{\subsection}{0ex}{*3}{*1}
 \titlespacing{\subsubsection}{0ex}{*3}{*1}
 \titlelabel{\thetitle\hspace{0.6em}}
+% Sans-serif section headings — matches official HÍ template
+\titleformat{\section}{\Large\sffamily\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\large\sffamily\bfseries}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\normalsize\sffamily\bfseries}{\thesubsubsection}{0.6em}{}
 \usepackage{graphicx}
 \usepackage{minted}
 \usemintedstyle{friendly}
@@ -23,7 +28,7 @@
 \usepackage[nice]{nicefrac}
 \usepackage{booktabs}
 \usepackage{caption}
-\captionsetup{font=small, labelfont=bf, margin=2cm}
+\captionsetup{font={small,it}, labelfont={bf,it}, margin=2cm} % Italic captions — matches HÍ template
 \usepackage{siunitx}
 \usepackage{float}
 \usepackage[shortlabels]{enumitem}
@@ -231,6 +236,8 @@ Reykjavik, Iceland, 2026 \\
 \newpage
 
 % ============================ ABSTRACT ============================
+\pagenumbering{roman}
+\setcounter{page}{5}  % Pages i–iv are cover, blank, inner title, colophon
 
 \section*{\huge Abstract}
 This thesis presents the development of \textbf{MPGV Monitor}, a full-stack web platform for dynamic visualization of seismic activity in Iceland. The system integrates automated data ingestion, real-time processing, and interactive geospatial rendering to produce a unified and reliable earthquake catalogue.
@@ -272,12 +279,32 @@ Meginframlag þessa verkefnis er samræmd, gæðastýrð jarðskjálftaskrá og 
 % ============================ CONTENTS ============================
 \tableofcontents
 
-% ============================ CHAPTER 1 ============================
-% Add a blank page
+% Blank page after contents
 \clearpage
 \null
-\thispagestyle{empty} % Remove page number
+\thispagestyle{empty}
 \newpage
+
+% ============================ LIST OF FIGURES ============================
+\listoffigures
+
+% Blank page after list of figures
+\clearpage
+\null
+\thispagestyle{empty}
+\newpage
+
+% ============================ LIST OF TABLES ============================
+\listoftables
+
+% Blank page after list of tables
+\clearpage
+\null
+\thispagestyle{empty}
+\newpage
+
+% ============================ CHAPTER 1 ============================
+\pagenumbering{arabic}  % Switch to arabic numerals, resets to page 1
 
 \section{Introduction}
 The \textbf{MPGV Monitor} project is a web-based interactive platform designed to visualize seismic activity across Iceland using near real-time earthquake data. The system follows a modern full-stack architecture that combines a Vite~+~React frontend, a Flask backend, and Leaflet-based geospatial rendering. React’s component-driven structure provides efficient state management and high interactivity, while Flask exposes a lightweight REST API that delivers processed seismic data to the client. The result is a responsive single-page application that updates automatically as new earthquake data arrives.
@@ -1521,8 +1548,6 @@ Overall, these comparisons show that MPGV Monitor aligns with established best p
 
 \begin{table}[h]
 \centering
-\caption{Comparison of MPGV Monitor with Selected Seismic Web Applications}
-\label{tab:seismic_comparison}
 \small
 \begin{tabular}{p{3cm} p{2.5cm} p{2.5cm} p{3cm} p{3cm}}
 \hline
@@ -1543,6 +1568,8 @@ IRIS IEB & Global & Research/education & Large-scale querying; export tools & No
 
 \hline
 \end{tabular}
+\caption{Comparison of MPGV Monitor with Selected Seismic Web Applications}
+\label{tab:seismic_comparison}
 \end{table}
 
 Table~\ref{tab:seismic_comparison} summarizes the positioning of MPGV Monitor relative to established earthquake web platforms. While global systems prioritize breadth of coverage and public dissemination, MPGV Monitor emphasizes depth within a specific geographic domain through multi-source reconciliation and analytical interaction design.
@@ -2020,6 +2047,7 @@ checked\_at & String  & Timestamp of last audit \\
 
 % ============================ BIBLIOGRAPHY ============================
 \clearpage
+\addcontentsline{toc}{section}{References}
 \bibliographystyle{plain}
 \bibliography{references}
 
