@@ -573,23 +573,6 @@ Using Python libraries such as \texttt{requests}, \texttt{BeautifulSoup}, and \t
 
 The initial dataset contained 30 entries, which were reduced to 15 after filtering. Although limited in scope, this experiment confirmed that automated scraping was viable, that the MPGV HTML tables were sufficiently stable for programmatic parsing, and that the extracted attributes (date--time, latitude, longitude, depth, magnitude) could be normalized for further processing.
 
-\textbf{Flowchart of Initial Approach}
-
-\begin{center}
-\begin{tikzpicture}[node distance=2cm]
-\node (start)    [startstop] {Start};
-\node (fetchurl) [process, below of=start] {Fetch October 2023 Page};
-\node (parsehtml)[process, below of=fetchurl] {Parse HTML for Table};
-\node (filter)   [process, below of=parsehtml] {Filter Records (Mw\_mean $\geq$ 3)};
-\node (save)     [startstop, below of=filter] {Save Cleaned Data to Text File};
-
-\draw [arrow] (start)    -- (fetchurl);
-\draw [arrow] (fetchurl) -- (parsehtml);
-\draw [arrow] (parsehtml)-- (filter);
-\draw [arrow] (filter)   -- (save);
-\end{tikzpicture}
-\end{center}
-
 This first prototype treated the MPGV archive as a static data source and did not attempt to maintain a historical catalogue or support continuous updates. Nevertheless, it provided a concrete starting point for designing a more general data pipeline.
 
 \vspace{0.4cm}
@@ -635,24 +618,13 @@ On the other hand, several issues emerged as the dataset grew. Maintaining synch
 
 \textbf{Flowchart of CSV-Based Approach}
 
-\begin{center}
-\begin{tikzpicture}[node distance=2cm]
-\node (start)    [startstop] {Start};
-\node (fetch)    [process, below of=start] {Fetch Base URL};
-\node (parse)    [process, below of=fetch] {Parse Year \& Month};
-\node (extract)  [process, below of=parse] {Extract Data};
-\node (filter)   [process, below of=extract] {Filter (Mw\_mean $\geq$ 3)};
-\node (aggregate)[process, below of=filter] {Aggregate All Records};
-\node (save)     [startstop, below of=aggregate] {Save to CSV};
+\vspace{0.7cm}
 
-\draw [arrow] (start)    -- (fetch);
-\draw [arrow] (fetch)    -- (parse);
-\draw [arrow] (parse)    -- (extract);
-\draw [arrow] (extract)  -- (filter);
-\draw [arrow] (filter)   -- (aggregate);
-\draw [arrow] (aggregate)-- (save);
-\end{tikzpicture}
-\end{center}
+\begin{figure}[H]
+
+\centering    \includegraphics[width=0.3\textwidth, height=12cm]{Screenshots/CSV-based solution.png}
+
+\end{figure}
 
 The CSV-based solution therefore formed an important intermediate step: it demonstrated that the full MPGV archive could be harvested automatically and analysed as a coherent dataset, while highlighting the need for a database-backed backend that could handle concurrent access and automated updates.
 
@@ -698,26 +670,13 @@ At this stage, it is useful to view reconciliation primarily as a \emph{data int
 
 The overall workflow of the current pipeline can be summarised as a recurring multi-source process that culminates in a single display catalogue:
 
-\begin{center}
-\begin{tikzpicture}[node distance=2cm]
+\vspace{0.7cm}
 
-\node (start)    [startstop] {Periodic Trigger};
-\node (mpgv)     [process, below of=start] {Scrape MPGV HTML};
-\node (skjalfta) [process, below of=mpgv] {Fetch Skjálftalísa JSON Data};
-\node (store)    [process, below of=skjalfta] {Store Source Tables (MPGV, SRaw)};
-\node (merge)    [process, below of=store] {Reconcile and Merge V$\oplus$S};
-\node (sqlite)   [process, below of=merge] {Write Unified Catalogue};
-\node (end)      [startstop, below of=sqlite] {Catalogue Ready for Frontend};
+\begin{figure}[H]
 
-\draw [arrow] (start)    -- (mpgv);
-\draw [arrow] (mpgv)     -- (skjalfta);
-\draw [arrow] (skjalfta) -- (store);
-\draw [arrow] (store)    -- (merge);
-\draw [arrow] (merge)    -- (sqlite);
-\draw [arrow] (sqlite)   -- (end);
+\centering    \includegraphics[width=0.3\textwidth, height=12cm]{Screenshots/Data_pipeline.png}
 
-\end{tikzpicture}
-\end{center}
+\end{figure}
 
 In the deployed system, the unified catalogue is exposed to the React frontend through RESTful API endpoints and rendered on an interactive Leaflet-based map. The design choice to separate ingestion, reconciliation, and delivery into distinct stages makes it easier to evolve each component independently. For example, additional data sources or alternative matching strategies can be incorporated without changing the general flow from raw source tables to a merged, visualisation-ready dataset. Similarly, the recent migration of the frontend rendering layer from Google Maps to Leaflet required no modifications to the data pipeline or API contracts.
 
@@ -735,98 +694,14 @@ The backend of the \textbf{MPGV Monitor} system is implemented as a persistent F
 
 At a high level, the backend operates through several interconnected layers, illustrated in Figure~\ref{fig:system-architecture}. Source-specific ingestion modules collect information from MPGV, Skjálftalísa, and EPOS endpoints; a reconciliation layer matches and merges events from the two seismic catalogues; a validation layer associates EPOS ShakeMaps with merged events; and the resulting products are stored in an SQLite database and exposed to the React frontend through a JSON-based API. These components run continuously under the coordination of \texttt{APScheduler}, which triggers the automated update cycle every three minutes and keeps the local catalogue synchronized with the external services.
 
-\vspace{0.4cm}
+\vspace{0.7cm}
 
 \begin{figure}[H]
-\centering
-\begin{tikzpicture}[
-    node distance=1.6cm and 2.8cm,
-    ext/.style={rectangle, rounded corners, draw=black, fill=orange!20,
-                minimum width=2.4cm, minimum height=0.9cm, text centered, font=\small},
-    mod/.style={rectangle, draw=black, fill=blue!15,
-                minimum width=2.4cm, minimum height=0.9cm, text centered, font=\small},
-    db/.style={rectangle, draw=black, fill=green!15,
-               minimum width=2.4cm, minimum height=0.9cm, text centered, font=\small},
-    api/.style={rectangle, draw=black, fill=yellow!20,
-                minimum width=3cm, minimum height=0.9cm, text centered, font=\small},
-    fe/.style={rectangle, rounded corners, draw=black, fill=red!20,
-               minimum width=3cm, minimum height=0.9cm, text centered, font=\small},
-    sched/.style={rectangle, dashed, draw=black, fill=gray!10,
-                  minimum width=2.8cm, minimum height=0.9cm, text centered, font=\small},
-    arr/.style={thick, ->, >=stealth}
-]
 
-% External sources (top row)
-\node (mpgv)  [ext]                          {MPGV HTML};
-\node (skjal) [ext, right=of mpgv]           {Skjálftalísa API};
-\node (epos)  [ext, right=of skjal]          {EPOS API};
+\centering    \includegraphics[width=\linewidth, height=12cm]{Screenshots/MPGV_sys_arc.png}
 
-% Ingestion modules (second row)
-\node (scrape)  [mod, below=of mpgv]         {\texttt{scrape.py}};
-\node (sclient) [mod, below=of skjal]        {\texttt{skjalftalisa\_client.py}};
-\node (vscrape) [mod, below=of epos]         {\texttt{volcano\_scraper.py}};
-
-% Scheduler
-\node (sched) [sched, below=1.0cm of sclient] {APScheduler (3\,min)};
-
-% DB tables (fourth row)
-\node (tblEq)  [db, below left=1.8cm and 0.8cm of sched]   {\texttt{earthquake}};
-\node (tblSR)  [db, below=1.8cm of sched]                   {\texttt{earthquake\_s\_raw}};
-\node (tblV)   [db, below right=1.8cm and 0.8cm of sched]  {\texttt{volcano}};
-
-% Reconciliation
-\node (recon) [mod, below=1.2cm of tblSR]   {\texttt{reconcile.py}};
-
-% Merged table
-\node (tblM)  [db, below=1.0cm of recon]    {\texttt{earthquake\_merged}};
-
-% ShakeMap
-\node (shake) [mod, right=2.2cm of recon]    {ShakeMap audit};
-\node (tblSM) [db, below=1.0cm of shake]     {\texttt{shakemap\_link}};
-
-% API layer
-\node (flask) [api, below=1.2cm of tblM]    {Flask API (\texttt{/earthquakes}, \texttt{/volcanoes}, ...)};
-
-% Frontend
-\node (react) [fe, below=1.0cm of flask]     {React + Leaflet frontend};
-
-% Arrows: external → modules
-\draw [arr] (mpgv)  -- (scrape);
-\draw [arr] (skjal) -- (sclient);
-\draw [arr] (epos)  -- (vscrape);
-
-% Arrows: scheduler → modules
-\draw [arr, dashed] (sched) -| (scrape);
-\draw [arr, dashed] (sched) -- (sclient);
-\draw [arr, dashed] (sched) -| (vscrape);
-
-% Arrows: modules → tables
-\draw [arr] (scrape)  -- (tblEq);
-\draw [arr] (sclient) -- (tblSR);
-\draw [arr] (vscrape) -- (tblV);
-
-% Arrows: tables → reconciliation
-\draw [arr] (tblEq) -- (recon);
-\draw [arr] (tblSR) -- (recon);
-
-% Arrows: reconciliation → merged
-\draw [arr] (recon) -- (tblM);
-
-% ShakeMap
-\draw [arr] (tblM.east) -| (shake);
-\draw [arr] (shake) -- (tblSM);
-
-% API reads from merged + volcano + shakemap
-\draw [arr] (tblM)  -- (flask);
-\draw [arr] (tblV.south) |- (flask);
-\draw [arr] (tblSM.south) |- (flask);
-
-% Frontend
-\draw [arr] (flask) -- (react);
-
-\end{tikzpicture}
 \caption{Full system architecture of MPGV Monitor, showing external data sources, ingestion modules, database tables, reconciliation pipeline, API layer, and frontend.}
-\label{fig:system-architecture}
+
 \end{figure}
 
 \subsection{Core Database Models}
@@ -984,29 +859,12 @@ In the current deployment, where the entire historical catalogue from June~2020 
 
 From an architectural viewpoint, the scheduler runs as a background component alongside the Flask application. HTTP endpoints such as \texttt{/earthquakes}, \texttt{/volcanoes}, and \texttt{/shakemap/\{dt\}} remain responsive while ingestion is in progress. Because the ingestion and reconciliation steps operate within database transactions, partial failures (for example, a temporary API outage) do not corrupt existing tables: exceptions are caught and logged, and the next scheduled cycle resumes from a clean state.
 
-\vspace{6\baselineskip}
-
+\vspace{0.7cm}
 
 \begin{figure}[H]
-\centering
-\begin{tikzpicture}[node distance=2.1cm]
 
-\node (sched)  [startstop] {APScheduler \\ (every 3 minutes)};
-\node (mpgv)   [process, below of=sched] {MPGV Scraper \\ update \texttt{earthquake}};
-\node (skj)    [process, below of=mpgv] {Skjálftalísa Client \\ update \texttt{earthquake\_s\_raw}};
-\node (merge)  [process, below of=skj] {Reconciliation Logic \\ write \texttt{earthquake\_merged}};
-\node (shake)  [process, below of=merge] {ShakeMap Validator \\ update \texttt{shakemap\_links}};
-\node (ready)  [startstop, below of=shake] {Database Ready \\ for Flask API};
-
-\draw[arrow] (sched) -- (mpgv);
-\draw[arrow] (mpgv)  -- (skj);
-\draw[arrow] (skj)   -- (merge);
-\draw[arrow] (merge) -- (shake);
-\draw[arrow] (shake) -- (ready);
-
-\end{tikzpicture}
+\centering    \includegraphics[width=0.3\textwidth, height=10cm]{Screenshots/APScheduler_working.png}
 \caption{Automated scheduling workflow coordinating ingestion, reconciliation, and ShakeMap validation.}
-\label{fig:autoschedule}
 \end{figure}
 
 \newpage
@@ -1028,75 +886,14 @@ where $\Delta t$ is the absolute difference in origin times, $\Delta d$ is the g
 
 At runtime, the system loads all Skjálftalísa detections into a time-indexed structure, enabling efficient lookup of candidate events whose timestamps differ from the corresponding MPGV event by at most two seconds. The overall reconciliation workflow is illustrated in Figure~\ref{fig:reconcile-workflow}. For each MPGV entry, the algorithm retrieves all Skjálftalísa events satisfying the temporal constraint, computes the spatial separation and magnitude deviation, filters out invalid candidates, and classifies the event as either \texttt{v\_only} or \texttt{matched}. If exactly one candidate passes all three thresholds, it is accepted as the match. If two or more candidates pass, the situation is considered ambiguous and the MPGV event falls back to \texttt{v\_only} status rather than risking a spurious association.
 
+\vspace{0.7cm}
+
 \begin{figure}[H]
-\centering
-\begin{tikzpicture}[node distance=1.8cm]
 
-% --- Top ---
-\node (start)   [startstop] {Start reconciliation};
+\centering    \includegraphics[width=\linewidth, height=20cm]{Screenshots/Reconciliation workflow.png}
 
-% --- Loading + indexing ---
-\node (loadv)   [process, below of=start] {Load MPGV events};
-\node (loads)   [process, below of=loadv] {Load Skjálftalísa events};
-\node (indexs)  [process, below of=loads] {Index Skjálftalísa by time};
-
-% --- Loop + candidate generation ---
-\node (loop)    [process, below of=indexs] {For each MPGV event};
-\node (window)  [process, below of=loop] {Find candidates in $\leq 2$ s};
-\node (metrics) [process, below of=window] {Compute $\Delta t$, distance, $\Delta Mw$};
-\node (filter)  [process, below of=metrics] {Apply thresholds};
-
-% --- Decision node (branch) ---
-\node (split)   [process, below of=filter] {Candidate count};
-
-% --- Three branches (shorter xshift) ---
-\node (zero)    [process, below of=split, xshift=-4.3cm] {0 candidates};
-\node (one)     [process, below of=split]                {1 candidate};
-\node (many)    [process, below of=split, xshift=4.6cm]  {$\geq 2$ candidates};
-
-% --- Outcomes ---
-\node (vonly)   [process, below of=zero] {Write \texttt{v\_only}};
-\node (best1)   [process, below of=one]  {Write \texttt{matched}};
-\node (resolve) [process, below of=many] {Ambiguous --- fall back};
-\node (best2)   [process, below of=resolve] {Write \texttt{v\_only}};
-
-% --- Merge + end (brought higher) ---
-\node (merged)  [process, below of=best1, yshift=-1.0cm]
-                {Update \texttt{earthquake\_merged}};
-\node (end)     [startstop, below of=merged]
-                {End};
-
-% --- Arrows: linear down ---
-\draw[arrow] (start) -- (loadv);
-\draw[arrow] (loadv) -- (loads);
-\draw[arrow] (loads) -- (indexs);
-\draw[arrow] (indexs) -- (loop);
-\draw[arrow] (loop) -- (window);
-\draw[arrow] (window) -- (metrics);
-\draw[arrow] (metrics) -- (filter);
-\draw[arrow] (filter) -- (split);
-
-% --- Branch arrows (shorter) ---
-\draw[arrow] (split) -| (zero);
-\draw[arrow] (split) -- (one);
-\draw[arrow] (split) -| (many);
-
-% --- Outcomes arrows ---
-\draw[arrow] (zero) -- (vonly);
-\draw[arrow] (one)  -- (best1);
-\draw[arrow] (many) -- (resolve);
-\draw[arrow] (resolve) -- (best2);
-
-% --- Merge arrows ---
-\draw[arrow] (vonly) |- (merged);
-\draw[arrow] (best1) -- (merged);
-\draw[arrow] (best2) |- (merged);
-
-\draw[arrow] (merged) -- (end);
-
-\end{tikzpicture}
 \caption{Reconciliation workflow with branching logic and compact layout.}
-\label{fig:reconcile-workflow}
+
 \end{figure}
 
 The corresponding Python implementation is shown below. It reflects the control flow depicted in Figure~\ref{fig:reconcile-workflow} and implements the threshold rules precisely. Diagnostic information such as time offset (\texttt{match\_dt\_sec}), epicentral distance (\texttt{match\_dist\_km}), and magnitude deviation (\texttt{match\_dm}) is stored alongside each merged event, enabling quality assessment and downstream analysis.
@@ -1155,28 +952,12 @@ For each event in the merged catalogue with origin time $t$, epicentre $(\phi, \
 
 If EPOS returns no ShakeMaps for the query window, the event is labelled \texttt{no\_candidate}. If candidates exist but none satisfy the validation thresholds, the status becomes \texttt{no\_valid}. Errors during API retrieval or metadata parsing result in the status \texttt{error}. All outcomes are preserved explicitly, ensuring transparency in downstream visualisation.
 
-\vspace{0.3cm}
+\vspace{0.7cm}
 
 \begin{figure}[H]
-\centering
-\begin{tikzpicture}[node distance=2cm]
 
-\node (start)   [startstop] {Merged Catalogue \\ (\texttt{earthquake\_merged})};
-\node (query)   [process, below of=start] {Query EPOS ShakeMap API \\ (time window \& bbox)};
-\node (filter)  [process, below of=query] {Filter Candidates \\ ($|\Delta t|$, distance, $|\Delta M|$ limits)};
-\node (select)  [process, below of=filter] {Select Best-Scoring ShakeMap \\ (time + distance + magnitude)};
-\node (update)  [process, below of=select] {Update \texttt{shakemap\_links} \\ (status, URL, diagnostics)};
-\node (front)   [startstop, below of=update] {Frontend Usage \\ (ShakeMap icons \& links)};
-
-\draw[arrow] (start)  -- (query);
-\draw[arrow] (query)  -- (filter);
-\draw[arrow] (filter) -- (select);
-\draw[arrow] (select) -- (update);
-\draw[arrow] (update) -- (front);
-
-\end{tikzpicture}
+\centering    \includegraphics[width=0.4\textwidth, height=8cm]{Screenshots/ShakeMap validation workflow.png}
 \caption{ShakeMap validation workflow: retrieving candidates from EPOS, filtering by temporal, spatial, and magnitude thresholds, selecting the best match, and caching results for frontend access.}
-\label{fig:shakemap-pipeline}
 \end{figure}
 
 \subsubsection*{Audit Mode and Evaluation Results}
@@ -1358,22 +1139,12 @@ Heatmap   & CartoDB Dark Matter (no labels) + label pane & Free tier \\
 \label{tab:tile-providers}
 \end{table}
 
+\vspace{0.7cm}
+
 \begin{figure}[H]
-\centering
-\begin{tikzpicture}[node distance=2.1cm]
 
-\node (frontend) [startstop] {React Frontend \\ (MapComponent.jsx)};
-\node (leaflet)  [process, below of=frontend] {Leaflet + react-leaflet \\ (open-source, no API key)};
-\node (tiles)    [process, below of=leaflet] {Tile Providers \\ (OSM, Esri, CartoDB)};
-\node (plugins)  [startstop, below of=tiles] {Plugins \\ (leaflet.heat, L.divIcon)};
-
-\draw[arrow] (frontend) -- (leaflet);
-\draw[arrow] (leaflet) -- (tiles);
-\draw[arrow] (tiles) -- (plugins);
-
-\end{tikzpicture}
+\centering    \includegraphics[width=0.4\textwidth, height=8cm]{Screenshots/Frontend integration.png}
 \caption{Frontend integration with the Leaflet mapping library, illustrating the open-source tile provider architecture that replaces the previous Google Maps API dependency.}
-\label{fig:leaflet_architecture}
 \end{figure}
 
 Tile layer performance is optimized through several Leaflet-specific configuration options: \texttt{updateWhenZooming=false} prevents tile reloading during zoom animations, \texttt{keepBuffer=4} pre-loads surrounding tiles to reduce blank areas during panning, and \texttt{detectRetina=false} avoids doubled tile requests on high-DPI displays. The map is configured with \texttt{preferCanvas=true}, which routes marker rendering through the HTML5 Canvas API rather than SVG, providing 3--5$\times$ faster redraws when displaying thousands of earthquake markers.
@@ -1398,26 +1169,12 @@ export async function fetchEarthquakes() {
 
 In practice, similar functions exist for volcano metadata and optional ShakeMap resources. The key point is architectural: UI components call stable functions such as \texttt{fetchEarthquakes()} rather than repeating request logic throughout the codebase.
 
+\vspace{0.7cm}
+
 \begin{figure}[H]
-\centering
-\begin{tikzpicture}[node distance=2.1cm]
 
-\node (api)      [startstop] {Flask API \\ (\texttt{/earthquakes}, \texttt{/volcanoes}, \texttt{/shakemap/...})};
-\node (apijs)    [process, below of=api] {Frontend API Layer \\ \texttt{api.js} (fetch + parse JSON)};
-\node (app)      [process, below of=apijs] {Global State \& Orchestration \\ \texttt{App.jsx}};
-\node (controls) [process, below of=app] {UI Components \\ (TimeWindow, Magnitude, Toggles, About)};
-\node (map)      [process, below of=controls] {Rendering Engine \\ \texttt{MapComponent.jsx}};
-\node (leaflet)  [startstop, below of=map] {Leaflet + react-leaflet \\ (basemap + overlays)};
-
-\draw[arrow] (api) -- (apijs);
-\draw[arrow] (apijs) -- (app);
-\draw[arrow] (app) -- (controls);
-\draw[arrow] (controls) -- (map);
-\draw[arrow] (map) -- (leaflet);
-
-\end{tikzpicture}
+\centering    \includegraphics[width=0.4\textwidth, height=10cm]{Screenshots/Frontend data flow.png}
 \caption{Frontend data flow from backend API endpoints through \texttt{api.js} into global state management in \texttt{App.jsx}, and onward to UI controls and Leaflet-based map rendering.}
-\label{fig:frontend_dataflow}
 \end{figure}
 
 \subsection{Top-Level Orchestration}
