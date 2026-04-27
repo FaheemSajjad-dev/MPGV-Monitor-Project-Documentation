@@ -248,7 +248,7 @@ This thesis describes \textbf{MPGV Monitor}, a full-stack web platform that scra
 
 Unlike earlier versions that relied solely on monthly HTML pages from the Icelandic Meteorological Office’s MPGV site, the current system incorporates multiple live data sources. Earthquake information is now obtained through a hybrid scraping pipeline that ingests MPGV records together with high-frequency seismic data from the Skjálftalísa API. These datasets are cross-validated and merged using a reconciliation algorithm that matches events based on temporal proximity, spatial distance, and magnitude similarity. Additional improvement is provided by programmatically querying the EPOS API to verify shaking intensity products, as well as for volcano locations and metadata. All processed information is maintained in an SQLite database and provided via a Flask-based REST backend, while a Vite~+~React frontend renders the results on an interactive Leaflet-based map interface.
 
-A previous iteration of the frontend relied on the Google Maps JavaScript API, which required a paid API key and imposed usage-based billing constraints. The current version replaces Google Maps entirely with Leaflet and the \texttt{react-leaflet} library, using freely available tile providers, OpenStreetMap for the standard view, Esri World Imagery for satellite, and CartoDB Dark Matter for the dark theme. This migration eliminates external API-key dependencies, reduces operational cost, and introduces new visualization capabilities including a density-based heatmap mode, canvas-accelerated marker rendering, and a zoom-responsive latitude/longitude grid overlay.
+A previous iteration of the frontend relied on the Google Maps JavaScript API, which required a paid API key and imposed usage-based billing constraints. The current version replaces Google Maps entirely with Leaflet and the \texttt{react-leaflet} library, using freely available tile providers: self-hosted PMTiles vector tiles (OpenStreetMap-derived, rendered via MapLibre GL) for the standard roadmap view, Esri World Imagery for satellite, and Esri World Dark Gray for the dark theme. This migration eliminates external API-key dependencies, reduces operational cost, and introduces new visualization capabilities including a density-based heatmap mode, circular \texttt{L.circleMarker} rendering, and a zoom-responsive latitude/longitude grid overlay.
 
 The system enables users to explore temporal patterns, analyze correlations between magnitude, depth, and spatial clusters, and filter events by custom time window and magnitude scale. Challenges addressed include reconciling asynchronous data sources, preventing duplication, validating raw event streams, optimising database writes under frequent updates, and ensuring smooth frontend performance when handling thousands of records. The platform stays responsive while polling every three minutes, even with several thousand records on the map.
 
@@ -267,7 +267,7 @@ The main outputs of this work are a unified, quality-controlled earthquake catal
 
 Ólíkt eldri útgáfum sem byggðu eingöngu á mánaðarlegum HTML-síðum af MPGV-vef Veðurstofu Íslands, nýtir núverandi kerfi marga lifandi gagnastrauma. Jarðskjálftaupplýsingar eru nú sóttar í gegnum tvíþætta gagnaöflunarleiðslu sem tekur við MPGV-gögnum ásamt hátíðnigögnum frá Skjálftalísu-forritaviðmótinu. Þessi gagnasöfn eru krossstaðfest og sameinuð með samræmingarreikniriti sem passar saman atburði á grundvelli tímanálægðar, landfræðilegrar fjarlægðar og styrkleikasamsvörunar. Frekari bæting fæst með fyrirspurnum á EPOS-forritaviðmótið til að sannreyna upplýsingar um hristingsstyrk, sem og til að sækja staðsetningar og lýsigögn eldfjalla. Öll unnin gögn eru geymd í SQLite-gagnagrunni og afhent í gegnum Flask-grundvallað REST-bakenda, á meðan Vite~+~React framendi birtir niðurstöðurnar á gagnvirku Leaflet-korti.
 
-Fyrri útgáfa framendans byggði á Google Maps JavaScript forritaviðmótinu sem krafðist greidds API-lykils og setti notkunartengdar reikningsskilaskorður. Núverandi útgáfa skiptir Google Maps alfarið út fyrir Leaflet og \texttt{react-leaflet} safnið og notar frjálsa kortalagaveitur, OpenStreetMap fyrir staðalyfirlit, Esri World Imagery fyrir gervihnattamyndir og CartoDB Dark Matter fyrir dökka þemað. Þessi flutningur útilokar ytri API-lykilháð, lækkar rekstrarkostnað og kynnir nýja sjónræna eiginleika, þar á meðal þéttleikakort, hraðritað myndgerðarlag og aðdráttarháð breiddargráðu-/lengdargráðunet.
+Fyrri útgáfa framendans byggði á Google Maps JavaScript forritaviðmótinu sem krafðist greidds API-lykils og setti notkunartengdar reikningsskilaskorður. Núverandi útgáfa skiptir Google Maps alfarið út fyrir Leaflet og \texttt{react-leaflet} safnið og notar frjálsa kortalagaveitur: eigin PMTiles-vektorkort (unnin úr OpenStreetMap, birt með MapLibre~GL) fyrir staðalyfirlit, Esri World Imagery fyrir gervihnattamyndir og Esri World Dark Gray fyrir dökka þemað. Þessi flutningur útilokar ytri API-lykilháð, lækkar rekstrarkostnað og kynnir nýja sjónræna eiginleika, þar á meðal þéttleikakort, hringmerkingar með \texttt{L.circleMarker} og aðdráttarháð breiddargráðu-/lengdargráðunet.
 
 Kerfið gerir notendum kleift að kanna tímamynstur, greina fylgni milli styrks, dýptar og rúmlegra klasa og sía atburði eftir sérsniðnum tímaglugga og styrkleikakvörðum. Áskoranir sem tekist var á við fela í sér samræmingu ósamstilltra gagnastrauma, vörn gegn tvítalningu, sannprófun á hráum atburðarstraumum, hagræðingu gagnagrunnsskrifa við tíðar uppfærslur og tryggingu á sléttri framendaframmistöðu þegar unnið er með þúsundir færslna. Kerfið helst svörunarhraðt þrátt fyrir að sækja ný gögn á þriggja mínútna fresti, jafnvel þegar nokkur þúsund færslur eru á kortinu.
 
@@ -365,9 +365,11 @@ Finally, thanks to my family and friends for putting up with late nights and wee
 \pagenumbering{arabic}  % Switch to arabic numerals, resets to page 1
 
 \section{Introduction}
-The \textbf{MPGV Monitor} project is a web-based interactive platform designed to visualize seismic activity across Iceland using near real-time earthquake data. The system follows a modern full-stack architecture that combines a Vite~+~React frontend, a Flask backend, and Leaflet-based geospatial rendering. React’s component-driven structure provides efficient state management and high interactivity, while Flask exposes a lightweight REST API that delivers processed seismic data to the client. The result is a responsive single-page application that updates automatically as new earthquake data arrives.
+Iceland is one of the most seismically active places on Earth, and yet the publicly available tools for exploring that activity are surprisingly limited. The Icelandic Meteorological Office provides a map of the last 48 hours, the USGS covers the whole planet at a coarse level, and that is roughly it. There is no interface that combines the two main Icelandic earthquake catalogues, supports multi-year exploration, and links events to shaking-intensity products. \textbf{MPGV Monitor} was built to fill that gap.
 
-An earlier version of the frontend relied on the Google Maps JavaScript API for map rendering. While functional, this dependency introduced a requirement for a paid API key, usage-based billing, and vendor lock-in to a proprietary mapping service. The current version migrates the entire spatial rendering layer to Leaflet, an open-source JavaScript mapping library, integrated via the \texttt{react-leaflet} bindings. This transition eliminates the need for any external API credentials, uses freely available tile services, and enables additional visualization capabilities such as a density-based heatmap mode and canvas-accelerated marker rendering.
+The system scrapes the IMO’s MPGV archive, queries the Skjálftalísa REST API, and reconciles both feeds into a single deduplicated catalogue that updates every three minutes. A React frontend built on Leaflet renders the result on an interactive map where users can filter by time window and magnitude, switch between map styles, overlay volcanoes and a lat/lon grid, and open a ShakeMap for any event that has one.
+
+An earlier version of the frontend used the Google Maps JavaScript API. That worked, but it meant a paid API key, usage-based billing, and no easy path to handing the system over to the IMO for long-term operation. The current version replaces Google Maps entirely with Leaflet and self-hosted PMTiles vector tiles, so there are no external API credentials and no third-party billing. The migration also made it practical to add features that were awkward under Google Maps: a kernel-density heatmap layer, circular \texttt{L.circleMarker} rendering, and a zoom-responsive latitude/longitude grid overlay.
 
 \subsection*{Context and Motivation}
 Iceland, situated along the \textbf{Mid-Atlantic Ridge}, is one of the most seismically active regions in the world. The island lies at the boundary between the North American and Eurasian tectonic plates, which are continuously diverging. This divergent plate setting generates persistent extensional forces within the crust, producing frequent earthquakes and sustained volcanic activity. Unlike convergent margins, where seismicity is typically driven by compressional stresses, Icelandic earthquakes arise primarily from rifting processes, magma intrusion, and crustal deformation. As a result, the country experiences recurrent earthquake swarms as well as occasional larger seismic events, which is why reliable seismic monitoring tools matter.
@@ -385,12 +387,12 @@ The seismic dataset is obtained from multiple authoritative sources, primarily t
 \subsection*{System Features}
 The backend, implemented in Flask, manages data retrieval, multi-source ingestion, reconciliation, and database updates, while also exposing REST endpoints to the frontend. In contrast to the project’s earlier prototype, which relied on static map generation, the current architecture shifts all rendering and interaction to a React-based interface built on the Leaflet mapping library. This enables real-time updates, smoother navigation, and a significantly more responsive user experience without requiring any paid mapping API credentials.
 
-A key enhancement of the system is the timeline slider, which allows users to filter earthquakes by year, month, and day, with the default view showing all available processed data. Additional functionalities include magnitude-scale filtering, dynamic marker colouring based on the active time window or magnitude range, volcano overlays, optional latitude–longitude grid lines, each of which can be enabled or disabled through dedicated toggles, and ShakeMap integration for verifying shaking intensity where available. The interface also supports multiple map styles, including roadmap (OpenStreetMap), satellite (Esri World Imagery), dark mode (CartoDB Dark Matter), and a density-based heatmap, providing users with flexible and informative perspectives on Icelandic seismic activity.
+A key enhancement of the system is the timeline slider, which allows users to filter earthquakes by year, month, and day, with the default view showing all available processed data. Additional functionalities include magnitude-scale filtering, dynamic marker colouring based on the active time window or magnitude range, volcano overlays, optional latitude–longitude grid lines, each of which can be enabled or disabled through dedicated toggles, and ShakeMap integration for verifying shaking intensity where available. The interface also supports multiple map styles, including roadmap (self-hosted PMTiles vector tiles via MapLibre~GL), satellite (Esri World Imagery), dark mode (Esri World Dark Gray), and a density-based heatmap, providing users with flexible and informative perspectives on Icelandic seismic activity.
 
 \subsection*{Contributions and Future Directions}
-\textbf{MPGV Monitor} serves a wide audience, including seismologists, local authorities, researchers, and the general public. By providing near real-time and intuitive seismic visualizations, the system gives them a single place to see what is happening, filter by time or magnitude, and check whether a ShakeMap exists for a particular event.
+The main output is a unified, quality-controlled earthquake catalogue that draws from two independent Icelandic sources and is accessible through both a web interface and a CSV export. The Leaflet migration removed the only dependency that would have made a clean IMO handover difficult, and it enabled features, a heatmap mode, a lat/lon grid, configurable colour encodings, that the Google Maps version could not easily support.
 
-Planned improvements include migrating from SQLite to PostgreSQL to handle larger datasets, introducing predictive models using machine learning, and optimizing performance through enhanced caching and request rate limiting. The recent migration from Google Maps to Leaflet has already reduced operational costs and removed API-key dependencies, establishing a more sustainable foundation for long-term adoption by the Icelandic Meteorological Office.
+The obvious next steps are accessibility improvements (keyboard navigation, colourblind-safe palettes), built-in analytical tools (Gutenberg--Richter plots, DBSCAN clustering), and a mobile app with push notifications. Further out, the plan is to explore machine-learning rate forecasting against the multi-year catalogue and to migrate from SQLite to PostgreSQL once the user base grows beyond a handful of researchers.
 
 What the project ultimately demonstrates is that a lightweight stack, Flask, SQLite, React, and Leaflet, is enough to build a self-updating earthquake monitor, provided the data pipeline handles the messy realities of multi-source ingestion and cross-catalogue reconciliation up front.
 
@@ -400,74 +402,114 @@ What the project ultimately demonstrates is that a lightweight stack, Flask, SQL
 
 \section{Background and Related Work}
 
-Mapping earthquake epicentres on a web-based interactive map is now standard practice; what remains harder is integrating catalogues from multiple agencies into a single view that a user can filter, colour-code, and drill into. This chapter surveys four areas that shaped the design of MPGV Monitor: the seismotectonic context of Iceland, geovisualization research, web-based earthquake visualization platforms, and seismic hazard products.
+Building a seismic monitoring tool for Iceland turned out to involve more prior work than I initially expected. Once the scope expanded beyond a simple map of recent earthquakes into a system that reconciles two catalogues, classifies markers by colour-encoded magnitude, links events to ShakeMap products, and stays running on a three-minute polling loop, it became clear that each of those pieces had been addressed in some form before, and reading that work saved real time during implementation. This chapter covers what I found most relevant: Iceland's seismotectonic setting, the web mapping libraries and tile delivery methods that informed the frontend architecture, existing earthquake platforms and why they fall short for multi-year exploration, how colour encoding of seismic data has been studied in the literature, the multi-source integration problem and how others have tackled deduplication, the backend patterns that guided the Flask and APScheduler design, and the ShakeMap system that MPGV Monitor hooks into at the event level.
 
 \subsection{Seismotectonic Context of Iceland}
 
-Iceland occupies a unique geological setting that directly motivates the need for dedicated seismic monitoring tools. The island straddles the Mid-Atlantic Ridge, where the North American and Eurasian tectonic plates diverge at a rate of approximately 18--20\,mm per year \cite{Sigmundsson2006}. This divergent plate boundary, combined with the presence of a deep mantle hotspot beneath the island, produces persistent volcanic activity and frequent seismicity across several distinct tectonic zones.
+Iceland sits on the Mid-Atlantic Ridge, the divergent boundary between the North American and Eurasian plates, which are pulling apart at roughly 18--20\,mm per year. A mantle hotspot underneath the island adds a second source of heat and magma on top of the spreading tectonics, which is why Iceland has such an unusually dense collection of active volcanic systems relative to its size. The result is a country where earthquakes and eruptions are not rare events but a near-constant background condition that any monitoring tool has to account for.
 
-The most seismically active regions include the South Iceland Seismic Zone (SISZ), the Reykjanes Peninsula, the Tjörnes Fracture Zone (TFZ) in the north, and the Eastern Volcanic Zone (EVZ). The SISZ in particular is characterized by large transform faults capable of generating earthquakes of magnitude 6 or greater, as demonstrated by destructive events in 1912, 2000, and 2008 \cite{Jakobsdottir2008}. Volcanic systems such as Hekla, Katla, Bárðarbunga, and Fagradalsfjall further contribute to seismicity through magma intrusion and crustal deformation, often producing intense earthquake swarms prior to and during eruptive episodes \cite{Sigmundsson2006}.
+The island's seismicity is concentrated in a handful of zones. The \textbf{South Iceland Seismic Zone} (SISZ) is a left-lateral transform belt that transfers spreading motion between two volcanic rift zones. It has a history of M\,6+ events; the most recent destructive sequences occurred in June 2000 and May 2008. Further southwest, the \textbf{Reykjanes Peninsula} is where the mid-ocean ridge comes ashore, and it was geologically quiet for roughly 800 years before abruptly awakening around 2020. Between 2021 and 2024 the peninsula experienced a series of magmatic intrusions, large swarms, and six volcanic fissure eruptions in close succession -- a sequence that flooded existing 48-hour monitoring portals with event counts they were never designed to handle, and that was a direct motivation for building a tool with a multi-year time window. In the north, the \textbf{Tjörnes Fracture Zone} (TFZ) connects the Northern Volcanic Zone to the offshore Kolbeinsey Ridge and is capable of generating M\,6--7 events. The \textbf{Eastern Volcanic Zone} (EVZ), home to Katla, Hekla, Grímsvötn, and Bárðarbunga among others, adds volcanic earthquake swarms tied to magma intrusion and caldera subsidence.
 
-Understanding these spatial and temporal patterns of seismic activity requires monitoring tools capable of handling high event rates, multi-source data, and rapid situational changes. This is why MPGV Monitor was built: a platform that can ingest data from several sources, reconcile overlapping records, and present the result on a single interactive map.
+Iceland's national monitoring network is operated by the Icelandic Meteorological Office (IMO), which runs a dense grid of broadband and short-period seismometers and publishes detected events in near real time through the Skjálftalísa REST API. The MPGV catalogue is a separate, independently maintained archive that covers a longer historical span and was built using a different detection workflow. These two catalogues do not agree perfectly -- they have different magnitude completeness thresholds, different reported attributes, and different update latencies -- which is exactly what makes building a merged view non-trivial and is the problem that much of the backend is designed to solve.
 
-\subsection{Geovisualization and Interactive Mapping}
+\subsection{Interactive Web Mapping: Frameworks and Tile Architectures}
 
-The field of geovisualization sits at the intersection of cartography, data analysis, and interactive design. Where traditional maps communicate a fixed message, geovisualization systems are built for exploration: users can probe spatial datasets, adjust what is shown, and discover patterns that the map's author did not anticipate \cite{Andrienko2007Geovisual, MacEachren2004Geovisualization}. Andrienko and Andrienko frame this as \emph{geovisual analytics}, the coupling of computational methods with visual interfaces so that analysts can detect structure in large geospatial datasets \cite{Andrienko2007Geovisual}. MacEachren et al.\ make a complementary argument, stressing that the real value of such systems lies in letting users shift fluidly between overview and detail \cite{MacEachren2004Geovisualization}. For earthquake data, which is inherently spatio-temporal and often requires iterative exploration to identify clusters or sequences, these capabilities are essential rather than optional.
+Web-based interactive mapping has changed considerably over the past decade. What used to require a desktop GIS installation can now run entirely in a browser, and the ecosystem of libraries and tile services that makes this possible has matured to the point where a small team can build a capable geospatial application without deploying any map infrastructure of its own.
 
-The move to browser-based mapping has widened the audience for this kind of exploration. Roth shows that modern web mapping interfaces can offer the same filter-and-zoom workflows that previously required desktop GIS installations, making spatial analysis accessible to non-specialists as well as domain experts \cite{Roth2013Interactive}.
+\textbf{Leaflet.js} is the library MPGV Monitor is built on. It is widely used in web mapping projects because it is lightweight (around 42\,kB gzipped), has a clean layer model, and works reliably across browsers without WebGL. Leaflet represents a map as a stack of layers in a defined Z-order: a base tile layer at the bottom, then GeoJSON or custom marker layers on top, with controls sitting above everything else. Each layer gets lifecycle hooks for pan and zoom events, which keeps the visible content in sync with the viewport. \textbf{React-Leaflet} wraps Leaflet's imperative API in React components, so the same props-and-state patterns that control the rest of the UI also control which layers are shown, what markers are rendered, and when they update \cite{Netek2023}.
 
-A separate but related challenge is the representation of change over time. Earthquake monitoring is not purely spatial: identifying swarms, migration patterns, and long-term trends requires examining how activity evolves across different temporal scales. Andrienko and Andrienko treat spatio-temporal exploration as a distinct analytical problem and propose interactive tools that allow users to step through time at multiple resolutions \cite{Andrienko2007Visual}. MPGV Monitor's multi-resolution time slider, which lets users navigate from year-level overviews down to individual days, was designed with exactly this problem in mind.
+The tile architecture in MPGV Monitor is not uniform -- different basemap modes use different delivery mechanisms, for reasons that are worth explaining. The \textbf{satellite} and \textbf{dark-mode} basemaps use raster tiles from Esri's ArcGIS REST services (\texttt{server.arcgisonline.com}). Esri's World Imagery and Canvas Dark Gray Base services work without an API key, deliver pre-rendered PNG tiles up to zoom level 17, and plug directly into Leaflet's standard \texttt{TileLayer} component. A few tile-fetch options were tuned to improve pan/zoom smoothness: the tile buffer was widened to four rows in each direction to reduce blank edges during fast panning, and retina tile requests were turned off to avoid unnecessary double-resolution fetches on high-DPI screens.
 
-One further idea from the geospatial literature proved unexpectedly relevant. Goodchild's concept of volunteered geographic information (VGI) deals with integrating data from distributed, heterogeneous sources \cite{Goodchild2007Citizens}. Earthquake monitoring does not use crowd-sourced data in the VGI sense, but the underlying integration challenge is similar: MPGV records and Skjálftalísa API events have different temporal resolutions, different reported attributes, and different update schedules, and they must be reconciled into a single coherent catalogue.
+The \textbf{roadmap} basemap takes a different path. It uses a self-hosted \textbf{PMTiles} file, which is a single binary container for vector tiles that supports HTTP range requests. The browser asks for only the byte ranges it needs for the current viewport rather than fetching a tile image for each tile slot, which means no tile server is needed on the backend -- the file just sits on the static file server alongside the HTML and JavaScript. Rendering is handled by \textbf{MapLibre GL} through the \texttt{@maplibre/maplibre-gl-leaflet} adapter, which embeds the MapLibre GL canvas inside the Leaflet layer stack. The cartographic style comes from the Protomaps Themes Base library, but it was substantially trimmed for the Iceland seismic monitoring use case: building footprints, land-use fills, railway lines, POI labels, and address numbers were all removed since they add visual clutter at the zoom levels used for earthquake browsing. A custom glacier fill layer was added to handle Iceland's ice caps, and the background colour outside the tile data extent was changed from the default mid-grey to the ocean colour so that zoomed-out Atlantic views look correct rather than showing a hard grey edge around the Iceland data file.
 
-\subsection{Web-Based Earthquake Visualization Systems}
+Running two rendering engines simultaneously -- MapLibre GL for vector tile rasterisation and Leaflet for everything else -- required some care. The MapLibre canvas is placed below all Leaflet marker panes in Z-order and its \texttt{pointer-events} CSS property is set to \texttt{none}, so clicks and scroll events fall through to the Leaflet layer. All of MapLibre's own navigation handlers (pan, zoom, rotate, keyboard shortcuts) are disabled at startup; Leaflet remains the sole controller of the viewport. Netek et al.\ measured that vector tiles consistently deliver lower bandwidth usage and shorter tile load times than raster tiles at equivalent zoom levels, with the gap widening at higher zoom \cite{Netek2020}. This is part of why PMTiles was chosen for the default roadmap view even though raster tiles from Esri would have been simpler to implement. For satellite and dark-mode, photorealistic imagery and a pre-styled dark canvas are not things vector tiles can provide, so raster delivery makes sense there.
 
-Several operational systems already put earthquake data on web-based interactive maps. The Icelandic Meteorological Office \cite{imo_quakes_48h}, the USGS \cite{usgs_latest_map}, and the European-Mediterranean Seismological Centre \cite{emsc_home} all run public-facing portals where users can view earthquake locations, magnitudes, and temporal patterns, sometimes with basic filtering. Netek et al.\ built a dedicated WebGIS platform for earthquake spatial analysis and found that responsive interfaces significantly improve both scientific and public engagement with seismic data \cite{Netek2018}.
+The \textbf{heatmap} mode is technically a fourth basemap mode but works differently from the other three. Rather than switching the tile source, it adds a canvas overlay rendered by the \texttt{leaflet.heat} plugin on top of whichever raster or vector base is showing. Each earthquake is passed to the plugin as a weighted point, with the weight derived from its magnitude, and the plugin computes a kernel-density surface from those points and draws it as a colour gradient. The overlay re-draws whenever the magnitude filter or time window changes, and since all the filtering happens in JavaScript on the already-downloaded catalogue, there is no server round-trip involved \cite{Netek2023}.
 
-Where most of these systems fall short is analytical depth. The emphasis is on getting information out quickly, showing the latest events on a map, rather than on letting users compare datasets, explore multi-year patterns, or cross-reference derived products like ShakeMaps \cite{Netek2018, Roth2013Interactive}. A user who wants to study how seismicity along the Reykjanes Peninsula evolved from 2021 to 2025, for instance, will find little support in interfaces optimized for 48-hour snapshots.
+\subsection{Existing Earthquake Visualization Platforms}
 
-More recent work has pushed the boundaries of what browsers can handle. Mazzei and Quaroni demonstrate a three-dimensional WebGIS for seismic risk on infrastructure \cite{Mazzei2022}, and Netek et al.\ show that spatial geoprocessing can now run entirely client-side rather than on a backend server \cite{Netek2023}. Browser capabilities are clearly growing, but feeding heterogeneous real-time data streams from multiple institutions into a single coherent interface remains an unsolved design problem for most existing platforms.
+Before building yet another earthquake map, it made sense to spend time with what already exists. The short version is that the existing tools are good at what they were designed for, but none of them was designed for the kind of multi-year, multi-source exploration this project needed.
 
-\subsection{Seismic Hazard Products and Earthquake Information Systems}
+The \textbf{Icelandic Meteorological Office} map shows the last 48 hours of automatically detected events, colour-coded by depth \cite{imo_quakes_48h}. It updates continuously and is the main public-facing tool for earthquake awareness in Iceland. However, it has no magnitude threshold slider, no way to look further back than 48 hours, and no alternative visual representation beyond the depth colour coding. The \textbf{USGS Earthquake Hazards Program} portal offers a global view with basic magnitude and date filters \cite{usgs_latest_map}, and the \textbf{EMSC} provides a similar multi-agency aggregation \cite{emsc_home}. All three are operationally excellent for situational awareness -- if you want to know what happened in the last day or two, they work well. The problem is that they were designed for that use case and are fairly rigid outside of it.
 
-Beyond raw earthquake catalogues, agencies also publish \emph{hazard products} that describe what an earthquake actually felt like on the ground. The best-known example is the USGS ShakeMap, which estimates ground shaking intensity immediately after an event and is routinely used by emergency responders and structural engineers \cite{Wald2005ShakeMap}. The physical basis for ShakeMap comes from empirical relationships between peak ground acceleration, peak ground velocity, and Modified Mercalli Intensity developed by Wald et al.\ \cite{Wald1999ShakeMap}; these relationships translate instrumental readings into the kind of human-scale intensity descriptions that non-seismologists can act on.
+Mazzei and Quaroni built a WebGIS application specifically for seismic risk assessment on infrastructure networks, rendering earthquake hypocentre clouds, fault surfaces, and building vulnerability data together in a single 3D scene \cite{Mazzei2022}. Their work shows that a purpose-built seismic interface, rather than a general GIS tool adapted for earthquake data, much better serves the analytical needs of domain users. The architecture they chose -- a REST backend that pre-processes data and delivers GeoJSON to a WebGL frontend -- also cleanly separates what belongs on the server (data integration, deduplication, spatial joins) from what belongs in the browser (rendering, filtering, user interaction). That same separation guided the design of MPGV Monitor, even though the rendering is 2D rather than 3D. Their observation that combining source parameters with derived products in a single interface reduces the navigation burden on users was also relevant: in MPGV Monitor that means linking earthquake events directly to ShakeMap products rather than making users find them separately.
 
-The practical problem is that earthquake catalogues and ShakeMaps usually live on separate websites maintained by different teams. A researcher who spots an interesting cluster in a catalogue has to leave that interface, navigate to the ShakeMap portal, and manually search for the corresponding product, assuming one exists. Few platforms attempt to bridge this gap.
+Netek et al.\ ran a systematic comparison of server-side versus client-side geospatial processing, testing operations like polygon intersection and buffer queries across datasets of varying size \cite{Netek2023}. Their finding that client-side JavaScript can match or outperform server-side processing for moderate-sized datasets -- because the network round-trip disappears once the data is already in the browser -- directly informed the decision to send the entire merged catalogue to the frontend in one request rather than having the server apply the magnitude and time-window filters. In practice this means that adjusting the magnitude slider or moving the time window in MPGV Monitor produces an immediate re-draw with no waiting, which matters a lot for an interface where those controls are adjusted repeatedly during exploration.
 
-\subsection{Limitations of Existing Approaches}
+\subsection{Visual Encoding of Seismic Data}
 
-Three recurring limitations stand out across the platforms surveyed above.
+How earthquakes are drawn on a map has a real effect on what patterns become visible and which ones stay hidden. Traditional printed seismicity maps typically encode magnitude as circle radius and depth as colour, following conventions that date back decades. On an interactive web map, those conventions run into some practical problems. When hundreds of events are plotted at a region that is seismically very active, size-encoded markers overlap into a dense mass where individual events are indistinguishable. Depth colour coding is also less useful in an interface that already needs to distinguish magnitude levels, so some re-thinking of the encoding was needed.
 
-First, most interfaces are optimized for display rather than analysis \cite{Netek2018, Roth2013Interactive}. A user can see where recent earthquakes occurred, but cannot easily compare activity across multi-year windows, apply custom magnitude thresholds, or switch between different visual encodings of the same data.
+In MPGV Monitor's scatter view, all markers are drawn as \textbf{fixed-size circles} with a 10-pixel diameter. Magnitude is encoded in colour instead of size. The main reason for this is density: at zoom levels where hundreds of events appear in the viewport, a fixed size keeps the markers identifiable while colour still communicates magnitude to the eye even in a crowded region, because the dominant tone of a dense cluster reflects whether most of the events in it are large or small. The palette runs five stops from a light blue-grey (\texttt{\#8aa0c0}) near the lower display threshold to near-black (\texttt{\#060820}) at the top of the magnitude range. Colour is computed per marker at render time by normalising each event's magnitude against the current filtered maximum and interpolating through the stops.
 
-Second, integrating catalogues from different monitoring networks is harder than it looks. Detection thresholds, magnitude estimation methods, reported attributes, and update cadences all vary from one agency to the next \cite{Wald2005ShakeMap}. Melgarejo-Hern{\'a}ndez et al.\ recently described a modular ingestion framework for near-real-time seismic data from multiple open providers and stressed that automated deduplication is essential once two agencies report overlapping events \cite{MelgarejoHernandez2026}. In Iceland, this problem is especially acute: the MPGV archive and the Skjálftalísa API describe the same physical earthquakes but differ in temporal resolution, metadata richness, and reporting latency.
+There is also a \emph{twilight} colour mode, which assigns each event a hue based on the calendar month of its UTC origin time rather than its magnitude. The hues run through a narrow red-violet band from dark rose in January to near-black in December. The purpose of this is to make seasonal patterns in seismicity visible without any additional filtering step. The Reykjanes Peninsula, for instance, shows some seasonal variation in event rates linked to glacial load changes, and having a mode where month reads directly from colour makes that pattern immediately apparent rather than requiring the user to filter by date range and compare two different views.
 
-Third, earthquake catalogues and derived hazard products such as ShakeMap are almost always delivered through separate portals \cite{Wald2005ShakeMap}. A user who wants both the event parameters and the shaking-intensity map has to navigate two different systems and match records by hand.
+The science of colour choice for visualisation data is more nuanced than it might appear. Crameri, Shephard, and Heron systematically reviewed colour map usage across published Earth science figures and showed through perceptual experiments that rainbow-style palettes -- which are very commonly used in geoscience -- introduce false visual boundaries and can make analysts perceive features in data that are not actually there \cite{Crameri2020}. Their recommendation for sequential data (anything with a natural ordering from low to high) is to use palettes that vary monotonically in perceived lightness without hue reversals. The blue-to-dark palette in MPGV Monitor follows this: every step darker means a stronger earthquake, with no colour cycling that might accidentally suggest a non-monotonic relationship. The same principles shaped the twilight mode, where the goal is categorical rather than ordinal -- distinguishing twelve months -- so a narrow hue range is used where the differences are visible but none of the months is perceptually ``higher'' than another.
+
+One further issue with rendering earthquake data in React is performance. React's reconciliation loop re-renders every child component when state changes, and for a catalogue of several thousand events that means recreating thousands of marker elements on every filter adjustment. MPGV Monitor avoids this by computing the filtered event array with \texttt{useMemo} (so it is only recalculated when the actual filter values change) and managing the Leaflet marker layer group directly through an imperative \texttt{useRef} reference rather than through React's tree. This way the browser patches only the markers whose colour or visibility changed rather than tearing down and rebuilding the full set.
+
+\subsection{Multi-Source Data Integration}
+
+Running a monitoring system from a single catalogue is straightforward. Running it from two is considerably more work, because the same earthquake will typically appear in both catalogues as two separate records with slightly different origin times, depths, and magnitudes -- depending on which agency's detection pipeline processed it and how quickly. Without deduplication, the merged catalogue inflates event counts and makes the map misleading.
+
+Melgarejo-Hern{\'a}ndez et al.\ built a modular ingestion framework specifically for this problem, targeting near-real-time aggregation from multiple open seismic web providers \cite{MelgarejoHernandez2026}. Their approach matches candidate duplicate pairs by applying three simultaneous tolerance windows: origin-time difference, epicentral distance (as a Haversine calculation), and magnitude difference. If a pair of records passes all three windows, they are treated as the same event and the richer record is kept; otherwise both are retained independently. The exact threshold values depend on the precision of the contributing networks. For a dense national network like the IMO network in Iceland, temporal windows of a few seconds and spatial windows of a few kilometres are generally sufficient to catch duplicates without falsely merging distinct events.
+
+This model of distributed, service-oriented seismic data access is now standard across European seismology. Strollo et al.\ describe EIDA (European Integrated Data Archive), a federated system that connects twelve national data centres through FDSN-compliant web services and makes waveform archives from over 12,000 stations accessible through a uniform REST interface \cite{Strollo2021}. The Skjálftalísa API is Iceland's national equivalent: a lightweight HTTP service that exposes IMO event data as JSON without requiring any special client software or credentials, which is what makes it practical to scrape automatically from a Python backend.
+
+MPGV Monitor's reconciliation pipeline works along the same lines as the Melgarejo-Hernández et al.\ framework. Each scraping cycle retrieves fresh events from the MPGV archive and from Skjálftalísa, then runs a pairwise matching pass across the combined set of new arrivals and existing catalogue entries. A match is accepted when all three offsets -- temporal (typically 30--60 seconds), spatial (typically 10--20\,km Haversine distance), and magnitude -- fall inside their respective thresholds. The winning record gets a provenance flag noting whether it came from MPGV, Skjálftalísa, or was matched from both, and is written to the \texttt{merged\_events} table. Unmatched events go in with their source flag set accordingly. The Flask API then serves the whole merged catalogue through a \texttt{GET /earthquakes} endpoint, consistent with the REST delivery model described by Strollo et al.\ \cite{Strollo2021}. All filtering -- by time window, by magnitude threshold -- happens client-side in the browser from this single payload rather than being applied as server-side query parameters, which simplifies the API and avoids the need for the server to maintain per-user state \cite{Netek2023}.
+
+\subsection{Backend Architecture}
+
+Running a seismic monitoring application involves a background process that wakes up periodically, fetches new events, reconciles them against what is already stored, and writes the results to a database -- all while an HTTP server sits alongside it serving API requests to the frontend. Getting those two things to coexist without locking each other out is the main architectural challenge for a lightweight single-process deployment.
+
+MPGV Monitor uses \textbf{Flask} as the HTTP layer. Flask is a micro-framework: it provides routing, request parsing, and response serialisation and leaves everything else to the developer. For this application that minimalism is an advantage, since the backend does not need an authentication system, a template engine, or an admin interface. The entire application lives in a single \texttt{app.py} file that wires a SQLAlchemy ORM to a SQLite database, starts a background scheduler, and registers half a dozen routes.
+
+The database engine is \textbf{SQLite}. SQLite stores the entire earthquake catalogue as a single file on disk (\texttt{data/earthquakes.db}), which keeps deployment simple -- no database server to configure or maintain. Its access pattern is a good fit for this workload: writes happen once per scraping cycle in a short batch transaction, while reads are frequent but simple full-table scans that return the whole catalogue. The one concurrency concern is that SQLite's default journal mode serialises all writes and reads, which could cause the scheduler thread to block API requests while it is committing new events. This is resolved by enabling \textbf{WAL mode} (Write-Ahead Logging) at startup. In WAL mode, readers work against a stable checkpoint while the writer appends to a separate log, so the two threads do not block each other. \texttt{PRAGMA synchronous = NORMAL} is also set to reduce the number of fsync calls -- for a monitoring application where missing a single scraping cycle is inconsequential, full durability at every commit is not worth the latency cost.
+
+The scheduler is \textbf{APScheduler}'s \texttt{BackgroundScheduler}, which runs ingestion jobs in a daemon thread within the same Python process. Each job has its own interval -- Skjálftalísa is polled more frequently than the MPGV archive, which changes more slowly -- and fires independently of HTTP traffic. Because everything runs in one process, the whole application deploys as a single \texttt{gunicorn} worker; there is no need for a separate worker dyno or message queue, which matters for keeping hosting costs down on a platform like Render.
+
+The API layer itself is deliberately thin. Routes do nothing beyond querying SQLAlchemy and serialising the results to JSON. Derived fields like formatted date strings and colour assignments are computed in the frontend, keeping the API stable and easy to inspect during debugging. The one exception is \texttt{/shakemap\_lookup}, which takes an event's datetime and coordinates and runs a Haversine search against a cached ShakeMap index on the server. That computation belongs on the server because the ShakeMap index is not sent to the frontend and because running it client-side against an indeterminate number of candidates would be awkward.
+
+\subsection{ShakeMap and Derived Hazard Products}
+
+An earthquake catalogue records where and when a rupture occurred and how large it was, but says nothing about what the shaking was actually like at any given location on the ground. Ground motion depends on distance from the rupture, the radiation pattern, the propagation path, and local site amplification -- factors that vary considerably from event to event and place to place. ShakeMap, maintained and operated by the USGS, addresses this by combining seismic station recordings with ground-motion prediction equations to produce spatial maps of peak ground acceleration, peak ground velocity, and Modified Mercalli Intensity shortly after a significant earthquake \cite{ShakeMapManual}. ShakeMaps are updated as more station data arrive, and they are widely used by emergency managers, insurers, and structural engineers to assess damage potential and prioritise response.
+
+The problem for an earthquake monitoring interface is that ShakeMaps and earthquake catalogues live in completely separate places. The USGS catalogue assigns events a unique identifier, and ShakeMap products are keyed to that identifier -- not to geographic coordinates or origin time. If a user spots a cluster in MPGV Monitor and wants to check whether any of the events caused significant shaking, they have to leave the application, figure out the corresponding USGS event ID (which may differ from the IMO or MPGV identifier for the same event), navigate to the ShakeMap portal, and search manually. In practice, most non-specialist users never bother with that workflow even when the ShakeMap would directly answer their question.
+
+MPGV Monitor addresses this by building a lookup at the event level. When the detail panel opens for a specific earthquake, the frontend sends a request to \texttt{/shakemap\_lookup} with the event's UTC origin time and decimal-degree coordinates. The backend compares these against a cached index of recent USGS ShakeMap events, finds the entry with the smallest combined temporal and spatial distance, and returns its URL if it falls within the acceptance thresholds. The detail panel then shows a direct link to the ShakeMap product. The user goes from noticing an event to viewing its shaking map in a single click without leaving the application or knowing anything about USGS event identifiers.
+
+\subsection{Where Existing Approaches Fall Short}
+
+After going through the platforms above and reading the relevant papers, three problems kept coming up that pointed toward what MPGV Monitor would need to do.
+
+The first is that every operational portal draws from a single catalogue \cite{imo_quakes_48h, usgs_latest_map, emsc_home}. For Iceland, this is a real gap: the MPGV archive and the Skjálftalísa API both cover Icelandic seismicity, but through different detection workflows, with different magnitude completeness levels and different update delays. There is no public interface that shows both together or even acknowledges the discrepancy. Melgarejo-Hern{\'a}ndez et al.\ make the same point about multi-network monitoring more broadly \cite{MelgarejoHernandez2026}. The reconciliation pipeline in MPGV Monitor grew directly out of that gap.
+
+The second problem is that existing interfaces stop at about 48 hours. That is fine for a daily briefing but not much use for a researcher trying to understand how the Reykjanes swarms evolved across 2021--2024, which zones lit up first, and how the eruption sequences connected to the earlier unrest. The IRIS IEB goes further back but is not Iceland-specific and does not combine multiple Icelandic sources \cite{iris_ieb_app}. Mazzei and Quaroni's point about purpose-built seismic interfaces providing much better analytical depth than general-purpose tools applies directly here \cite{Mazzei2022, Netek2023}.
+
+The third is the ShakeMap gap. Earthquake locations and shaking-intensity products live in completely separate places, and the workflow needed to connect them, looking up a USGS event ID, navigating to the ShakeMap portal, searching by approximate time, is one that most non-specialist users simply will not bother with \cite{ShakeMapManual}. The inline ShakeMap lookup in MPGV Monitor was added specifically to close that gap with a single click.
 
 \subsection{Positioning of MPGV Monitor}
 
-MPGV Monitor was designed to close the three gaps identified above, within the specific context of Icelandic seismicity.
+MPGV Monitor is not trying to replace the IMO portal or the USGS viewer. It has a much narrower focus: Iceland-specific, multi-year, with a reconciled catalogue drawn from two sources instead of one. The target user is someone who already knows Iceland is seismically active and wants to explore that activity over a longer time span than 48 hours, with enough filtering and visual control to actually see patterns.
 
-On the analytical side, the interface borrows from the geovisual analytics tradition \cite{Andrienko2007Geovisual, MacEachren2004Geovisualization, Andrienko2007Visual}: a multi-resolution time slider, magnitude thresholding, and a switchable colour encoding give users the kind of exploratory control that existing Icelandic platforms do not offer. On the data side, an automated reconciliation pipeline ingests MPGV records, Skjálftalísa API events, and EPOS auxiliary datasets, deduplicates them using the temporal--spatial--magnitude matching approach that Melgarejo-Hern{\'a}ndez et al.\ argue is necessary for multi-provider systems \cite{MelgarejoHernandez2026}, and writes the result into a single merged catalogue. On the product side, ShakeMap verification links are embedded directly in the event-inspection panel, so a user can go from noticing a cluster to checking the shaking-intensity map without leaving the application \cite{Wald2005ShakeMap}.
+The literature reviewed above shaped specific design decisions. The reconciliation approach, matching events from MPGV and Skjálftalísa by time, distance, and magnitude, follows the framework described by Melgarejo-Hern{\'a}ndez et al.\ \cite{MelgarejoHernandez2026}, and the resulting API follows the REST conventions that Strollo et al.\ document for FDSN-compliant seismic services \cite{Strollo2021}. The choice of PMTiles vector tiles for the roadmap view and Esri raster tiles for satellite and dark mode reflects Netek et al.'s finding that vector delivery wins on bandwidth at equivalent zoom levels, while raster remains the practical option for photorealistic imagery \cite{Netek2020}. The colour palette for earthquake markers uses a monotonically darkening blue scale rather than a rainbow ramp, in line with Crameri et al.'s work on how rainbow palettes introduce false perceptual boundaries in geoscience figures \cite{Crameri2020}. The decision to ship the full merged catalogue to the browser in a single response and filter client-side came from Netek et al.'s observation that for datasets of this size, the server round-trip costs more than the in-browser computation \cite{Netek2023}. And the inline ShakeMap link in the event panel closes the catalogue-to-hazard-product gap that the ShakeMap manual itself describes but that no Iceland-facing interface currently bridges \cite{ShakeMapManual}.
 
-The platforms reviewed above show that interactive earthquake maps are well established, but few of them reconcile multiple catalogues or link events to ShakeMap products in a single interface. MPGV Monitor targets exactly that gap.
-
-The following chapter describes the methodological approach used to design and implement the MPGV Monitor platform, including data acquisition, catalogue reconciliation, backend architecture, and the development of the interactive visualization interface.
+Mazzei and Quaroni's conclusion that a purpose-built seismic WebGIS consistently serves domain users better than a general-purpose tool adapted for earthquake data \cite{Mazzei2022} is probably the most direct validation for the project's overall direction. What makes MPGV Monitor different from what they built is the Iceland-specific context: two catalogues that disagree and must be reconciled, an unusually active eruption period that made multi-year access essential, and institutional data sources (MPGV, Skjálftalísa, EPOS) that no general-purpose tool is wired to consume.
 
 % ============================ CHAPTER 3 ============================
 
 \section{Project Overview}
 
 \subsection{Initial Setup}
-The development of the \textbf{MPGV Monitor} project has undergone a substantial transformation since its initial version. The earlier prototype used Flask for backend services, where most data processing occurred server-side in Python. The frontend employed React but remained relatively static, relying on backend-generated map visualizations produced with Folium, which rendered basic OpenStreetMap tiles.
-Although this approach yielded a functional prototype, it was constrained by limited interactivity, poor scalability, and reduced responsiveness. A key limitation was the absence of a fully functional time slider because the processing logic was tightly coupled to backend operations. Rendering dynamic visualizations directly in Flask also introduced performance bottlenecks when handling larger datasets.
+The project went through several distinct phases before reaching its current form. The earliest version did most of its work on the server: Flask scraped the data, Folium rendered a static map in Python, and the frontend was little more than a page that displayed whatever the backend had generated. That worked as a proof of concept, but it meant every interaction required a round trip to the server, the time slider was barely functional because filtering was coupled to the backend scraping logic, and adding new features was slow because changing one thing tended to break another.
+
 
 \begin{figure}[H]
     \centering    \includegraphics[width=\linewidth, height=7cm]{Screenshots/Folium_Map_version.png}
-    \caption{Folium Based Map Version}
+    \caption{Early prototype of the MPGV Monitor frontend using a server-side Folium map. All rendering was handled in Python, resulting in a static output with no client-side interactivity or time-slider support.}
 \end{figure}
 
-To address these limitations, the project transitioned to a more modernized architecture, combining Flask for backend API services with Vite and React for the frontend. This shift enabled greater interactivity, improved responsiveness, and better scalability by offloading much of the visualization logic to the client side. The new architecture also made it practical to add features like the time slider and the earthquake magnitude scale that would have been awkward to implement in the earlier server-rendered approach.
+Switching to a Vite + React frontend and a Flask API backend fixed the core problem: the browser now owns the rendering and filtering logic, so changing the time window or magnitude threshold no longer requires a server round-trip. That shift also made the time slider and magnitude scale practical to build, since they are purely client-side controls that operate on data already in memory.
 
 Python remains the core language of the backend due to its mature ecosystem for web development and data processing. Flask serves as the lightweight web framework responsible for handling API requests and serving earthquake data in JSON format. The data ingestion logic combines traditional HTML scraping from the Icelandic Meteorological Office’s MPGV archive (\texttt{hraun.vedur.is}) with high-frequency seismic data fetched through the Skjálftalísa API. MPGV records are collected using \texttt{BeautifulSoup} and \texttt{requests}, while Skjálftalísa events are retrieved in structured JSON form and stored in a dedicated raw-data table. Both sources are cleaned, normalised, and written to an SQLite database. A reconciliation algorithm subsequently merges MPGV and Skjálftalísa events into a unified catalogue based on temporal, spatial, and magnitude-based matching rules.
 The result is a clean, queryable catalogue with no duplicated entries.
@@ -475,7 +517,7 @@ The result is a clean, queryable catalogue with no duplicated entries.
 Unlike the earlier implementation, where filtering and processing were performed on the backend and visualised through static Folium maps, the new system uses React to dynamically display earthquake data on an interactive map. An intermediate version of the frontend used the Google Maps JavaScript API for geospatial rendering; however, this introduced a dependency on a paid API key and vendor-specific billing. The current version replaces Google Maps with Leaflet, an open-source mapping library, integrated through \texttt{react-leaflet}. This design lets the frontend render maps using freely available tile services and update in place without full page reloads or external API credentials, something that was difficult to achieve in the earlier backend-heavy architecture.
 
 Vite, a modern build tool and development server, was chosen for the frontend instead of the traditional Create React App. Vite accelerates development through faster builds, hot module replacement, and optimized performance. With React’s component-based structure, the frontend is modular and scalable, making it easier to introduce new features. Dependencies for the backend are managed through a \texttt{requirements.txt} file, including Flask, pandas, requests, BeautifulSoup, SQLAlchemy for database management, APScheduler for automated updates, and additional modules for Skjálftalísa ingestion, EPOS ShakeMap verification, and volcano data retrieval.
-On the frontend, dependencies are tracked in \texttt{package.json}, including React~18, \texttt{react-leaflet}~4.2 and \texttt{leaflet}~1.9 for map rendering, \texttt{leaflet.heat} for heatmap visualization, \texttt{axios} for HTTP communication, and \texttt{lodash} for utility functions. The previous version used \texttt{@react-google-maps/api} for Google Maps integration; this dependency has been entirely removed in the current Leaflet-based architecture.
+On the frontend, dependencies are tracked in \texttt{package.json}, including React~18, \texttt{react-leaflet}~4.2 and \texttt{leaflet}~1.9 for map rendering, \texttt{maplibre-gl} and \texttt{@maplibre/maplibre-gl-leaflet} for the PMTiles-backed vector roadmap layer, \texttt{pmtiles} and \texttt{protomaps-themes-base} for self-hosted vector tile rendering, \texttt{leaflet.heat} for heatmap visualization, \texttt{axios} for HTTP communication, and \texttt{lodash} for utility functions. The previous version used \texttt{@react-google-maps/api} for Google Maps integration; this dependency has been entirely removed in the current Leaflet-based architecture.
 
 \begin{figure}[H]
     \centering    \includegraphics[width=\linewidth, height=7cm]{Screenshots/Vite_terminal.png}
@@ -487,13 +529,13 @@ The move to a Vite + React frontend and a lightweight Flask API backend resolved
 \newpage
 
 \subsection{Data Sources}
-The \textbf{MPGV Monitor} system integrates multiple authoritative datasets to construct a unified and reliable earthquake catalogue for Iceland. In earlier versions of the project, the only data source was the Icelandic Meteorological Office’s HTML-based MPGV archive (\href{http://hraun.vedur.is/ja/Mpgv/}{hraun.vedur.is}), which contains monthly tables of date-time, location, depth, and magnitude values. Although the structure of the MPGV pages is predictable and suitable for automated scraping, relying solely on this source limited temporal resolution and restricted the system’s ability to incorporate higher-frequency seismic data.
+The system draws from three sources. The earliest version used only one: the Icelandic Meteorological Office’s HTML-based MPGV archive (\href{http://hraun.vedur.is/ja/Mpgv/}{hraun.vedur.is}), which publishes monthly tables of date-time, location, depth, and magnitude for events going back to June~2020. MPGV is reliable and well-structured enough to scrape automatically, but it covers only curated events and updates more slowly than the real-time detection stream.
 
 \begin{figure}[H]
 
     \centering    \includegraphics[width=\linewidth, height=8cm]{Screenshots/hraun_vedur.png}
 
-    \caption{Icelandic Meteorological Office website (\texttt{vedur.is}).}
+    \caption{The Icelandic Meteorological Office website (\texttt{vedur.is}), which hosts both the MPGV archive used as the primary data source and the Skjálftalísa API used for high-frequency event ingestion.}
 
 \end{figure}
 
@@ -514,7 +556,7 @@ The \textbf{MPGV Monitor} system integrates multiple authoritative datasets to c
 \newpage
 
 
-To address these limitations, the current architecture combines MPGV records with data from the \textbf{Skjálftalísa API}, a machine-readable web service maintained by the Icelandic Meteorological Office that provides earthquake information in JSON format. Skjálftalísa delivers higher temporal precision, richer metadata, and unique event identifiers, enabling more accurate and complete cataloguing of seismic activity. Events retrieved from Skjálftalísa are stored in a dedicated raw-data table, while MPGV events are stored separately to preserve their original structure.
+The current architecture adds the \textbf{Skjálftalísa API}, also maintained by the IMO, which delivers preliminary detections in JSON format with higher temporal precision and unique event identifiers. Because both sources cover the same physical earthquakes from different detection pipelines, the same event shows up in each catalogue with slightly different timestamps, depths, and magnitudes. The two feeds are stored in separate tables and then reconciled into a unified view.
 
 \begin{figure}[H]
 
@@ -536,7 +578,7 @@ A reconciliation algorithm subsequently merges MPGV and Skjálftalísa events in
 
 In addition to earthquake data, the system ingests auxiliary information from the \textbf{EPOS Iceland} APIs. The EPOS Volcanoes API supplies volcano locations, elevation values, and descriptive metadata, enabling the display of volcano overlays on the map. The EPOS ShakeMap API provides shaking intensity products that can be associated with individual earthquakes; these are cross-referenced against the merged catalogue to supply optional ShakeMap links for supported events. This extra data lets users see which volcanoes are near a cluster and check whether EPOS has a ShakeMap for a given event.
 
-All data from MPGV, Skjálftalísa, and EPOS endpoints are stored in an SQLite database, which supports efficient queries, automated updates, and consistent long-term storage. The backend exposes this information through Flask API routes, while the frontend retrieves and visualizes the data in real time on a Leaflet-based map using free tile providers (OpenStreetMap, Esri World Imagery, and CartoDB Dark Matter). Features such as the time slider, magnitude scale, timeline-based or magnitude-based marker colouring, density heatmap visualization, volcano overlays, and ShakeMap integration are made possible by this multi-source ingestion framework.
+All data from MPGV, Skjálftalísa, and EPOS endpoints are stored in an SQLite database, which supports efficient queries, automated updates, and consistent long-term storage. The backend exposes this information through Flask API routes, while the frontend retrieves and visualizes the data in real time on a Leaflet-based map using free tile providers (self-hosted PMTiles for the roadmap view, Esri World Imagery for satellite, and Esri World Dark Gray for dark and heatmap modes). Features such as the time slider, magnitude scale, timeline-based or magnitude-based marker colouring, density heatmap visualization, volcano overlays, and ShakeMap integration are made possible by this multi-source ingestion framework.
 
 Taken together, the MPGV scraper, Skjálftalísa client, EPOS integration, and reconciliation pipeline give the system a single, deduplicated catalogue drawn from multiple independent sources. This catalogue underpins every frontend feature, from time-filtered marker rendering to ShakeMap drill-down, and can accommodate new feeds without restructuring the existing pipeline.
 
@@ -670,7 +712,7 @@ The overall workflow of the current pipeline can be summarised as a recurring mu
 
 \centering    \includegraphics[width=0.3\textwidth, height=12cm]{Screenshots/Data_pipeline.png}
 
-\caption{Multi-source ingestion and merging workflow of the current data pipeline.}
+\caption{Multi-source ingestion and merging workflow: MPGV records, Skjálftalísa detections, and EPOS metadata flow through separate ingestion modules into the SQLite database, where the reconciliation step produces a single unified catalogue.}
 \label{fig:data-pipeline}
 
 \end{figure}
@@ -687,9 +729,9 @@ Each stage fixed a concrete problem left by the one before it. Text files broke 
 
 \section{Backend Development}
 
-The backend of the \textbf{MPGV Monitor} system is implemented as a persistent Flask application that orchestrates data ingestion, reconciliation, storage, and delivery to the frontend. In contrast to the early prototypes described in Chapter~3, where scraping logic was embedded in standalone scripts and results were stored in flat files, the current backend adopts a modular architecture built around SQLAlchemy ORM models, an SQLite database, a periodic scheduling subsystem, and a set of RESTful API endpoints.
+The backend is a Flask application that runs continuously alongside an APScheduler background job. Every three minutes, the scheduler fires a sequence of three tasks: scrape the latest MPGV records, fetch recent Skjálftalísa detections, and reconcile both into a unified catalogue. Flask then serves that catalogue through a small set of JSON endpoints. The early prototypes in Chapter~3 did something similar in standalone scripts with flat-file storage; the current backend replaces those scripts with SQLAlchemy ORM models, an SQLite database, and a proper scheduling layer that keeps everything running unattended.
 
-At a high level, the backend operates through several interconnected layers, illustrated in Figure~\ref{fig:system-architecture}. Source-specific ingestion modules collect information from MPGV, Skjálftalísa, and EPOS endpoints; a reconciliation layer matches and merges events from the two seismic catalogues; a validation layer associates EPOS ShakeMaps with merged events; and the resulting products are stored in an SQLite database and exposed to the React frontend through a JSON-based API. These components run continuously under the coordination of \texttt{APScheduler}, which triggers the automated update cycle every three minutes and keeps the local catalogue synchronized with the external services.
+Figure~\ref{fig:system-architecture} shows how the pieces fit together. Ingestion modules collect raw data from MPGV, Skjálftalísa, and EPOS; a reconciliation step merges the two seismic feeds; a validation step links EPOS ShakeMaps to merged events; and the results land in SQLite where the API can read them.
 
 \vspace{0.7cm}
 
@@ -731,7 +773,7 @@ class EarthquakeSRaw(db.Model):
     magnitude  = db.Column(db.Float)
 \end{verbatim}
 
-The \textbf{EarthquakeMerged} model represents the unified catalogue that is served directly to the frontend. Each row corresponds to a single earthquake that has either been matched across MPGV and Skjálftalísa or originates from only one of them. During reconciliation, the system compares events from both sources using temporal, spatial, and magnitude thresholds (see Section~\ref{subsec:reconcile}) and decides whether they describe the same physical event. If so, the merged entry inherits MPGV parameters while retaining the Skjálftalísa identifier and diagnostic metrics such as time and distance offsets. Otherwise, the event is recorded as MPGV-only.
+The \textbf{EarthquakeMerged} model represents the unified catalogue that is served directly to the frontend. Each row corresponds to a single earthquake that has either been matched across MPGV and Skjálftalísa or originates from MPGV alone. During reconciliation, the system compares events from both sources using temporal, spatial, and magnitude thresholds (see Section~\ref{subsec:reconcile}) and decides whether they describe the same physical event. When a match is found, \textbf{origin time and magnitude ($M_w$) are taken from MPGV} (the curated, authoritative values), while \textbf{latitude, longitude, and depth are taken from the Skjálftalísa match} (which provides higher-precision hypocentral solutions). This field-level merging means that each matched row has the quality-controlled magnitude of the IMO solution but the more precise location of the Skjálftalísa detection. If no match is found, all fields are taken from MPGV and the row is recorded as \texttt{v\_only}.
 
 \begin{verbatim}
 class EarthquakeMerged(db.Model):
@@ -801,15 +843,17 @@ The MPGV scraper, implemented in \texttt{scrape.py}, parses the monthly HTML pag
 
 \paragraph{Skjálftalísa Client.}
 
-The Skjálftalísa ingestion module, implemented in \texttt{skjalftalisa\_client.py}, interacts with the JSON-based Skjálftalísa API. The service returns column-oriented arrays of values, which the client converts into row-wise dictionaries containing event IDs, timestamps, latitudes, longitudes, depths, and magnitudes. Timestamps are normalised to the uniform format \texttt{YYYY-MM-DD HH:MM:SS} in UTC, and magnitudes are converted to floating-point values with appropriate filtering. The resulting records are inserted into the \texttt{earthquake\_s\_raw} table, keyed by Skjálftalísa’s \texttt{event\_id} for later matching.
+The Skjálftalísa ingestion module, implemented in \texttt{skjalftalisa\_client.py}, interacts with the Skjálftalísa API at \texttt{api.vedur.is/skjalftalisa/v1/quake/array}. Requests are sent as HTTP POST with a JSON body specifying \texttt{start\_time}, \texttt{end\_time}, \texttt{size\_min}, \texttt{event\_type}, and the list of fields to return. The service responds with column-oriented arrays (e.g.\ \texttt{"lat": [...], "long": [...]}); the client converts these into row-wise dictionaries and normalises UNIX timestamps to the uniform format \texttt{YYYY-MM-DD HH:MM:SS} in UTC. Requests spanning more than 365 days are automatically split into yearly chunks. The resulting records are inserted (or updated by \texttt{event\_id}) into the \texttt{earthquake\_s\_raw} table.
+
+During routine scheduled cycles only the most recent 7 days of Skjálftalísa data are fetched (\texttt{fetch\_last\_n\_days(7)}), providing an efficient incremental update. A separate \texttt{backfill\_skjalftalisa\_since\_2020()} helper is available for one-time historical population and was used to seed the initial catalogue from June~2020 onwards.
 
 \paragraph{EPOS Volcano Scraper.}
 
 The \texttt{volcano\_scraper.py} module fetches volcano metadata from the EPOS Iceland API. Because EPOS exposes several endpoints and data formats, the scraper performs additional normalisation to reconcile different field names (for example, \texttt{lat\_dd} versus \texttt{latitude}) and ensure that all entries are represented in a consistent schema. Elevation is stored in metres and also converted to feet for convenience. This process populates the \texttt{volcano} table with up-to-date volcano locations and basic descriptive information.
 
-\paragraph{Operational Characteristics.}
+\paragraph{Operational characteristics.}
 
-To prevent transient issues from corrupting the database, each ingestion module handles network timeouts, retries, and schema changes defensively. Failed cycles do not overwrite existing data, and exceptions are logged for later inspection. In practice, the ingestion pipeline is also optimised for efficiency: the MPGV scraper re-checks all available months but only inserts genuinely new records thanks to the uniqueness constraint, the Skjálftalísa client typically fetches only the last \emph{n} days of activity, and EPOS metadata is refreshed infrequently, since volcano properties evolve slowly on the timescale of the deployment.
+A few practical realities shaped the error handling. External services go down from time to time, and the MPGV page layout changed slightly in late 2025, so each module has to deal with transient failures without leaving the database in a half-written state. In practice this means exceptions are caught and logged per cycle, failed cycles simply produce no new rows (they do not overwrite existing ones), and the next scheduled run resumes cleanly. Efficiency-wise, the MPGV scraper re-checks all historical months on every cycle but the uniqueness constraint means only genuinely new rows make it into the database; the Skjálftalísa client fetches only the last seven days in routine mode; and EPOS volcano metadata is refreshed infrequently because volcano locations do not change on the timescale of the deployment.
 
 \paragraph{Dataset Composition.}
 
@@ -834,26 +878,33 @@ Coverage (\% matched in merged table)                      & 81.2\% \\
 \label{tab:data-coverage}
 \end{table}
 
-These statistics highlight the complementary value of Skjálftalísa: more than 80\,\% of MPGV events have a corresponding Skjálftalísa detection, which both validates the matching strategy and confirms the consistency of the two catalogues. The remaining 19\,\% of MPGV events labelled as \texttt{v\_only} either fall outside Skjálftalísa’s temporal window or correspond to events that the API does not report.
+The 81\,\% match rate was higher than I expected. It suggests that Skjálftalísa and MPGV cover largely the same events at the magnitude range this system targets, which gives some confidence that the reconciliation thresholds are not so tight that they are missing real matches. The remaining 334 MPGV-only events either fall outside the date range Skjálftalísa covers or correspond to events the API simply does not report at that magnitude.
 
 \subsection{Automated Scheduling}
 
 Automated ingestion in \textbf{MPGV Monitor} is driven by \texttt{APScheduler}, which periodically triggers a composite backend job without any manual intervention. The scheduler is configured in \texttt{app.py} and attached to the Flask application context. It registers a recurring job that executes the entire ingestion and merging workflow at a fixed interval:
 
 \begin{verbatim}
-scheduler.add_job(
+_scheduler = BackgroundScheduler(
+    coalesce=True,
+    misfire_grace_time=60
+)
+_scheduler.add_job(
     scheduled_scrape,
     "interval",
     minutes=3,
     max_instances=1
 )
+_scheduler.start()
 \end{verbatim}
 
 The choice of a three-minute interval reflects a compromise between data freshness and resource usage. Skjálftalísa can update at sub-minute cadence, whereas MPGV solutions are published on scales of tens of minutes to hours. Running the full update every three minutes ensures that Skjálftalísa detections are incorporated soon after they are available, while also catching new MPGV entries in a timely fashion, without placing excessive load on the external services or the local SQLite database.
 
-The \texttt{max\_instances=1} parameter is critical from a reliability perspective. It guarantees that a new scheduler run is not started while the previous one is still active, thereby avoiding overlapping writes and potential race conditions. Each scheduled execution of \texttt{scheduled\_scrape} performs a full pass of the pipeline: MPGV scraping, Skjálftalísa fetching, reconciliation into the merged table, and optional ShakeMap validation.
+The \texttt{max\_instances=1} parameter is critical from a reliability perspective. It guarantees that a new scheduler run is not started while the previous one is still active, thereby avoiding overlapping writes and potential race conditions. Each scheduled execution of \texttt{scheduled\_scrape} performs three steps: (1)~MPGV scraping (all available months from June~2020), (2)~Skjálftalísa fetching (incremental, the most recent 7~days only), and (3)~reconciliation into the merged table. ShakeMap validation is \emph{not} part of the scheduled cycle; it is run separately by executing \texttt{shakemap\_validator.py} directly, which audits all merged events and populates the \texttt{shakemap\_links} cache.
 
-In the current deployment, where the entire historical catalogue from June~2020 has already been ingested, many scheduler cycles log messages such as \enquote{\texttt{:)\ 0 new earthquake records added to SQLite via Flask.}} followed by \enquote{\texttt{Merged rows written:1781}}. This behaviour illustrates that the pipeline is idempotent: the job can be re-run safely even when no new events are available, and the content of the merged table remains stable. When new earthquakes are published by the Icelandic Meteorological Office, the same mechanism automatically incorporates them into both the MPGV table and the unified catalogue.
+The scheduler itself is started \emph{lazily} rather than at application startup. It is registered inside a \texttt{@app.before\_request} hook and starts on the first HTTP request that reaches the server. This avoids starting background threads in Flask's reloader subprocess (only the worker process, identified by \texttt{WERKZEUG\_RUN\_MAIN=true} in debug mode, should run the scheduler).
+
+In the current deployment, where the entire historical catalogue from June~2020 has already been ingested, many scheduler cycles log messages such as \enquote{\texttt{0 new earthquake records added (Flask).}} followed by \enquote{\texttt{Total: 1781}}. This behaviour illustrates that the pipeline is idempotent: the job can be re-run safely even when no new events are available, and the content of the merged table remains stable. When new earthquakes are published by the Icelandic Meteorological Office, the same mechanism automatically incorporates them into both the MPGV table and the unified catalogue.
 
 From an architectural viewpoint, the scheduler runs as a background component alongside the Flask application. HTTP endpoints such as \texttt{/earthquakes}, \texttt{/volcanoes}, and \texttt{/shakemap/\{dt\}} remain responsive while ingestion is in progress. Because the ingestion and reconciliation steps operate within database transactions, partial failures (for example, a temporary API outage) do not corrupt existing tables: exceptions are caught and logged, and the next scheduled cycle resumes from a clean state.
 
@@ -862,7 +913,7 @@ From an architectural viewpoint, the scheduler runs as a background component al
 \begin{figure}[H]
 
 \centering    \includegraphics[width=0.3\textwidth, height=10cm]{Screenshots/APScheduler_working.png}
-\caption{Automated scheduling workflow coordinating ingestion, reconciliation, and ShakeMap validation.}
+\caption{Automated scheduling workflow coordinating MPGV scraping, Skjálftalísa ingestion, and reconciliation. ShakeMap validation is run separately via \texttt{shakemap\_validator.py} and is not part of the scheduled cycle.}
 \end{figure}
 
 \newpage
@@ -890,12 +941,12 @@ At runtime, the system loads all Skjálftalísa detections into a time-indexed s
 
 \centering    \includegraphics[width=\linewidth, height=20cm]{Screenshots/Reconciliation workflow.png}
 
-\caption{Reconciliation workflow with branching logic and compact layout.}
+\caption{Reconciliation workflow showing the branching logic for matching MPGV events against Skjálftalísa detections. Candidate events must pass temporal, spatial, and magnitude thresholds simultaneously; ambiguous multi-candidate cases fall back to \texttt{v\_only} status.}
 \label{fig:reconcile-workflow}
 
 \end{figure}
 
-The corresponding Python implementation is shown below. It reflects the control flow depicted in Figure~\ref{fig:reconcile-workflow} and implements the threshold rules precisely. Diagnostic information such as time offset (\texttt{match\_dt\_sec}), epicentral distance (\texttt{match\_dist\_km}), and magnitude deviation (\texttt{match\_dm}) is stored alongside each merged event, enabling quality assessment and downstream analysis.
+The corresponding Python implementation is shown below. It reflects the control flow depicted in Figure~\ref{fig:reconcile-workflow} and implements the threshold rules precisely. When a match is accepted (\texttt{write\_matched}), the merged row stores MPGV origin time and magnitude but Skjálftalísa latitude, longitude, and depth (depth policy \texttt{'s'} — use Skjálftalísa depth). Diagnostic information such as time offset (\texttt{match\_dt\_sec}), epicentral distance (\texttt{match\_dist\_km}), and magnitude deviation (\texttt{match\_dm}) is stored alongside each merged event, enabling quality assessment and downstream analysis.
 
 \begin{verbatim}
 for v in v_rows:
@@ -927,7 +978,7 @@ for v in v_rows:
 
 Because the reconciliation outcome is recorded in the \texttt{status} field and both MPGV and Skjálftalísa identifiers are kept, every match can be audited after the fact. If the thresholds turn out to be too tight or too loose, the algorithm can be re-tuned and the merge re-run without losing any raw data.
 
-In addition to \texttt{matched} and \texttt{v\_only}, the database schema also supports a \texttt{s\_only} status for Skjálftalísa detections that have no corresponding MPGV event. These records are stored in the merged table for completeness but are not served to the frontend by default, since they lack the curated magnitude values that MPGV provides. The \texttt{s\_only} events remain available for research queries and can be included in API responses if needed in the future.
+The current reconciliation implementation processes only MPGV (\textit{v}) events as the primary input and attempts to pair each with a Skjálftalísa (\textit{s}) detection. Skjálftalísa events that have no corresponding MPGV entry (i.e., would be \texttt{s\_only}) are not written to the merged table; they remain in the \texttt{earthquake\_s\_raw} table and are not served to the frontend. This policy keeps the merged catalogue anchored to the IMO's curated magnitude estimates, since standalone Skjálftalísa detections lack the validated $M_{w}$ values that MPGV provides. Adding \texttt{s\_only} support remains a planned extension for future versions.
 
 \subsection{ShakeMap Validation Pipeline}
 \label{subsec:shakemap}
@@ -939,14 +990,14 @@ While the merged earthquake catalogue provides a consistent record of seismicity
 For each event in the merged catalogue with origin time $t$, epicentre $(\phi, \lambda)$, and magnitude $M_w$, the validator performs the following steps:
 
 \begin{enumerate}
-    \item \textbf{ShakeMap retrieval.} Query the EPOS ShakeMap API for products occurring within a 30-minute window centred on the event time and lying inside a latitude--longitude bounding box around the event location.
+    \item \textbf{ShakeMap retrieval.} Query the EPOS ShakeMap API (\texttt{api.epos-iceland.is}) for products within a ±30-minute window around the event time, constrained to a bounding box padded by $0.3^{\circ}$ in each direction around the event epicentre.
     \item \textbf{Candidate evaluation.} For every returned ShakeMap, compute:
     \[
-    |\Delta t| = |t_{\text{event}} - t_{\text{sm}}|, \quad 
+    |\Delta t| = |t_{\text{event}} - t_{\text{sm}}|, \quad
     \Delta d = \text{dist}\big((\phi,\lambda), (\phi_{\text{sm}},\lambda_{\text{sm}})\big), \quad
     |\Delta M| = |M_w - M_{w,\text{sm}}|.
     \]
-    ShakeMaps exceeding predefined limits on any of these metrics are rejected.
+    Candidates are accepted only if $|\Delta t| \leq 10$ min, $\Delta d \leq 10$ km, and $|\Delta M| \leq 0.5$. ShakeMaps exceeding any of these hard limits are rejected.
     \item \textbf{Best-match selection.} If multiple valid candidates remain, select the one with the smallest combination of temporal offset, spatial distance, and magnitude deviation using a lexicographic ordering.
     \item \textbf{Database update.} Store the selected ShakeMap (or the failure category) in the \texttt{shakemap\_links} table together with diagnostic values such as \texttt{dt\_sec}, \texttt{dist\_km}, and \texttt{dm}.
 \end{enumerate}
@@ -1010,11 +1061,11 @@ The principal routes implemented in \texttt{app.py} are:
     \item \texttt{/earthquakes} ,  returns the unified catalogue from \texttt{earthquake\_merged}, optionally filtered to the last \emph{N} days via a query parameter. Responses are cached in memory with a 60-second TTL.
     \item \texttt{/earthquakes\_csv} ,  downloads the merged earthquake catalogue as a CSV file, supporting the same optional day-based filtering.
     \item \texttt{/volcanoes} ,  returns volcano metadata from the \texttt{volcano} table for map overlay visualisation.
-    \item \texttt{/shakemap\_lookup} ,  queries the EPOS API for ShakeMap data near a specified event (parameters: \texttt{dt}, \texttt{lat}, \texttt{lon}).
-    \item \texttt{/shakemap/<dt>} ,  returns a cached or validated ShakeMap link and associated diagnostic metadata for the event whose timestamp is \texttt{<dt>}, if available.
+    \item \texttt{/shakemap\_lookup} ,  queries the EPOS API live for ShakeMap data near a specified event (parameters: \texttt{dt}, \texttt{lat}, \texttt{lon}); uses a different EPOS endpoint (\texttt{api.vedur.is}) than the batch validator and applies a looser proximity scoring rather than hard acceptance thresholds.
+    \item \texttt{/shakemap/<dt>} ,  returns a cached or validated ShakeMap link and associated diagnostic metadata for the event whose timestamp is \texttt{<dt>}, if available. Reads from the \texttt{shakemap\_links} table populated by \texttt{shakemap\_validator.py}.
     \item \texttt{/health} ,  returns row counts for the \texttt{earthquake}, \texttt{earthquake\_s\_raw}, and \texttt{earthquake\_merged} tables, useful for operational monitoring.
-    \item \texttt{/reconcile} ,  manually triggers a reconciliation run; this endpoint is used exclusively for debugging and evaluation.
-    \item \texttt{/scrape-volcanoes} ,  manually triggers a volcano metadata refresh from the EPOS API.
+    \item \texttt{/reconcile} ,  \textbf{POST} endpoint that manually triggers a reconciliation run; restricted to localhost (\texttt{127.0.0.1} or \texttt{::1}) and used exclusively for debugging and evaluation.
+    \item \texttt{/scrape-volcanoes} ,  manually triggers a volcano metadata refresh from the EPOS API; also restricted to localhost only.
 \end{itemize}
 
 A typical endpoint serialises ORM objects into dictionaries and wraps them in a JSON response. For example, the endpoint providing the unified earthquake catalogue is defined as follows:
@@ -1045,9 +1096,7 @@ Because API handlers are predominantly read-only while the scheduler handles wri
 
 \subsection{Summary}
 
-In practical terms, the backend does four things: it pulls data from three independent sources, schedules those pulls so nobody has to run them by hand, reconciles the results into one deduplicated catalogue, and hands the catalogue to the frontend through a small set of JSON endpoints. SQLAlchemy wraps every write in a transaction, and each ingestion module keeps its own networking and parsing details private, so when the MPGV page layout changed slightly in late 2025, only \texttt{scrape.py} needed updating.
-
-This turned out to matter more than expected during the Leaflet migration. Because the frontend only ever talks to a few GET endpoints that return filtered JSON, swapping Google Maps for Leaflet did not require a single backend change. The same loose coupling should make it straightforward to add new data sources or richer queries later without reworking the pipeline itself.
+The backend does four things: pull data from three sources, schedule those pulls automatically, reconcile the results into one deduplicated catalogue, and serve that catalogue through a handful of JSON endpoints. That is a small surface area for everything the system has to do, and the constraint turned out to be useful. When the MPGV page layout changed in late 2025, only \texttt{scrape.py} needed touching. When the frontend migrated from Google Maps to Leaflet, the backend did not change at all, because the frontend only ever sees a few GET endpoints returning flat JSON and the rendering engine behind the map is invisible to the API. Whether that loose coupling holds under future extensions, new data sources, richer queries, will depend on keeping the separation clear between what belongs in the pipeline and what belongs in the browser.
 
 \newpage
 
@@ -1055,15 +1104,15 @@ This turned out to matter more than expected during the Leaflet migration. Becau
 \section{Frontend Architecture and Implementation}
 \label{sec:frontend}
 
-The MPGV Monitor frontend provides the user-facing analytical interface of the system. Its primary responsibility is to transform the reconciled and validated earthquake catalogue produced by the backend into an interactive geospatial environment where users can explore events, apply temporal and magnitude filters, and inspect event-level metadata. The frontend is implemented as a single-page application (SPA) using React~18 with Vite as the build toolchain.
+The frontend is a React~18 single-page application built with Vite. It fetches the merged earthquake catalogue from the backend once on load and then every three minutes, and renders whatever the active filters leave behind as Leaflet markers on an interactive map. The user never waits for the server when adjusting time or magnitude controls; all filtering happens client-side against the already-downloaded catalogue.
 
 \subsubsection*{Migration from Google Maps to Leaflet}
 
 A previous version of the frontend used the Google Maps JavaScript API for all spatial rendering. While Google Maps provided high-quality cartography and smooth navigation, it introduced several practical constraints: a paid API key was required, usage incurred billing based on map loads, and the proprietary nature of the service created vendor lock-in. These constraints were particularly limiting for a research project intended for eventual handover to the Icelandic Meteorological Office, where ongoing API costs and credential management would add operational burden.
 
-The current version replaces Google Maps entirely with \textbf{Leaflet}~1.9, an open-source JavaScript mapping library, integrated into React via the \texttt{react-leaflet}~4.2 bindings. This migration eliminates the need for any API key, removes usage-based billing, and provides full control over tile sources. The specific tile providers used for each basemap mode are detailed in Section~\ref{subsec:frontend_leaflet}. In addition, the Leaflet-based architecture enabled the introduction of a new heatmap visualization mode, canvas-accelerated marker rendering, and a fully custom zoom-responsive latitude/longitude grid overlay, features that were not present in the Google Maps version.
+The current version replaces Google Maps entirely with \textbf{Leaflet}~1.9, an open-source JavaScript mapping library, integrated into React via the \texttt{react-leaflet}~4.2 bindings. This migration eliminates the need for any API key, removes usage-based billing, and provides full control over tile sources. The roadmap view uses a self-hosted PMTiles vector tile archive rendered via MapLibre~GL, so even the default basemap has no external CDN dependency. The specific tile providers used for each basemap mode are detailed in Section~\ref{subsec:frontend_leaflet}. In addition, the Leaflet-based architecture enabled the introduction of a new heatmap visualization mode, circular \texttt{L.circleMarker} rendering, and a fully custom zoom-responsive latitude/longitude grid overlay, features that were not present in the Google Maps version.
 
-A key architectural principle of the system is separation of concerns. The backend owns ingestion, reconciliation, ShakeMap validation, and persistence. The frontend consumes curated outputs via explicit API endpoints and performs no reconciliation or validation logic locally. Instead, it focuses on (i) presentation of spatial layers, (ii) interactive filtering and visual encoding, and (iii) contextual inspection of individual events. Keeping these responsibilities apart makes the codebase easier to maintain and guarantees that whatever the map shows comes from the same authoritative catalogue that lives in the database. The best evidence for this separation working as intended is that the entire Google Maps--to--Leaflet migration required zero changes to the backend API or data models.
+One decision made early on that kept paying off was keeping the backend and frontend truly separate. The backend handles ingestion, reconciliation, ShakeMap validation, and persistence. The frontend calls a fixed set of HTTP endpoints and renders what comes back. It has no knowledge of how the catalogue was produced or where the data came from. This meant that when the rendering layer was migrated from Google Maps to Leaflet, the backend did not need a single change, the endpoints stayed identical and the data format was untouched. That same boundary should make it straightforward to add new features on either side without the change propagating across both layers.
 
 \subsection{User Interface Overview and Interaction Goals}
 \label{subsec:frontend_ui_overview}
@@ -1075,7 +1124,7 @@ The interface is composed of a small set of persistent controls arranged around 
 \begin{itemize}
     \item \textbf{Map menu (top-left):} a hover-activated menu that allows switching between \emph{Map}, \emph{Satellite}, \emph{Dark Mode}, and \emph{Heatmap}. These options provide alternative cartographic contexts while keeping the analytical overlays consistent.
     \item \textbf{Application title (top-center):} fixed title providing clear identity of the system.
-    \item \textbf{About button (top-right):} opens a compact modal panel above the map that describes the purpose of MPGV Monitor and its data sources, and provides a CSV data export button.
+    \item \textbf{About button (top-right):} opens a modal panel with an overview of the system, a CSV data export button, contact information, credits, and a disclaimer about limited mobile support.
     \item \textbf{Magnitude scale (right):} a vertical slider for magnitude threshold selection, coupled to a color scale when magnitude-color mode is enabled.
     \item \textbf{TimeWindow slider (left, vertical):} a multi-resolution temporal selector that supports navigating from year-level ranges into month-level and day-level windows. Supports both scroll-wheel zoom and drag-based panning.
     \item \textbf{Color-mode toggle (near the slider controls):} switches marker coloring between timeline-based encoding and magnitude-based encoding. The inactive scale becomes visually muted to reduce ambiguity.
@@ -1130,10 +1179,10 @@ The \texttt{TileLayerManager} subcomponent within \texttt{MapComponent.jsx} sele
 \hline
 \textbf{Map Mode} & \textbf{Tile Provider} & \textbf{Cost} \\
 \hline
-Roadmap   & OpenStreetMap             & Free (open data) \\
+Roadmap   & Self-hosted PMTiles (MapLibre GL, OpenStreetMap-derived) & Free (open data) \\
 Satellite & Esri World Imagery        & Free tier \\
-Dark Mode & CartoDB Dark Matter       & Free tier \\
-Heatmap   & CartoDB Dark Matter (no labels) + label pane & Free tier \\
+Dark Mode & Esri World Dark Gray Base & Free tier \\
+Heatmap   & Esri World Dark Gray Base + Dark Gray Reference label pane & Free tier \\
 \hline
 \end{tabular}
 \caption{Tile providers used for each basemap mode in the Leaflet-based frontend.}
@@ -1148,7 +1197,9 @@ Heatmap   & CartoDB Dark Matter (no labels) + label pane & Free tier \\
 \caption{Frontend integration with the Leaflet mapping library, illustrating the open-source tile provider architecture that replaces the previous Google Maps API dependency.}
 \end{figure}
 
-Tile layer performance is optimized through several Leaflet-specific configuration options: \texttt{updateWhenZooming=false} prevents tile reloading during zoom animations, \texttt{keepBuffer=4} pre-loads surrounding tiles to reduce blank areas during panning, and \texttt{detectRetina=false} avoids doubled tile requests on high-DPI displays. The map is configured with \texttt{preferCanvas=true}, which routes marker rendering through the HTML5 Canvas API rather than SVG, providing significantly faster redraws when displaying thousands of earthquake markers.
+Tile layer performance is optimized through several Leaflet-specific configuration options: \texttt{updateWhenZooming=false} prevents tile reloading during zoom animations, \texttt{keepBuffer=4} pre-loads surrounding tiles to reduce blank areas during panning, and \texttt{detectRetina=false} avoids doubled tile requests on high-DPI displays. The map is configured with \texttt{preferCanvas=false}, keeping the SVG renderer for earthquake markers; this is intentional because the Canvas renderer intercepts right-click events on marker canvases (showing ``Save image as'' instead of the browser's native context menu), whereas SVG elements pass right-click through to the normal context menu. Marker performance at the current dataset size (approximately 1\,800 events) remains acceptable with SVG rendering and a single \texttt{L.layerGroup}.
+
+The roadmap mode is rendered by a \texttt{MaplibreVectorLayer} subcomponent that mounts a MapLibre~GL instance as a Leaflet layer. Tiles are loaded from a self-hosted \texttt{iceland.pmtiles} file served as a PMTiles archive alongside the frontend assets, using the \texttt{pmtiles://} protocol registered with MapLibre's protocol handler. This eliminates any runtime dependency on an external tile CDN for the default map view. All MapLibre interaction handlers (pan, zoom, rotate, keyboard) are disabled so that Leaflet remains the sole interaction controller; the MapLibre canvas is set to \texttt{pointer-events: none} so that clicks propagate to Leaflet marker layers beneath it.
 
 \subsection{Backend Connection}
 \label{subsec:frontend_api_layer}
@@ -1163,11 +1214,13 @@ A representative pattern used in \texttt{api.js} is:
 \begin{verbatim}
 export async function fetchEarthquakeData() {
   const response = await axios.get(`${API_URL}/earthquakes`);
-  return response.data;
+  return Array.isArray(response.data) ? response.data : [];
 }
 \end{verbatim}
 
-In practice, similar functions exist for volcano metadata and optional ShakeMap resources. The key point is architectural: UI components call stable functions such as \texttt{fetchEarthquakes()} rather than repeating request logic throughout the codebase.
+In practice, similar functions exist for volcano metadata and optional ShakeMap resources. The key point is architectural: UI components call stable functions such as \texttt{fetchEarthquakeData()} rather than repeating request logic throughout the codebase.
+
+The ShakeMap helper, \texttt{fetchShakeMapValidated(dt, lat, lon)}, deliberately uses the browser's native \texttt{fetch()} API rather than \textit{axios}. It calls the live \texttt{/shakemap\_lookup} endpoint (which queries the EPOS API in real time) and returns a structured result \texttt{\{available, url, dt\_sec, dist\_km, dm\}} on success or \texttt{null} if no validated ShakeMap is found. The \texttt{dt\_sec} field is derived from the API's \texttt{minutes\_diff} field multiplied by 60. Note that the development build points the backend at port~5001 (\texttt{http://localhost:5001}), while the Flask server defaults to port~5002; the ports must therefore be aligned in local development.
 
 \vspace{0.7cm}
 
@@ -1195,28 +1248,22 @@ The orchestration role of \texttt{App.jsx} is also visible through callbacks: wh
 \subsection{Map Rendering and Marker Lifecycle}
 \label{subsec:frontend_mapcomponent}
 
-The map rendering logic is implemented in the \texttt{MapComponent.jsx} module (approximately 650 lines), which acts as the spatial rendering engine of the frontend. It is responsible for constructing the Leaflet map instance and managing the lifecycle of all map overlays. Unlike static map outputs, this component must support dynamic re-rendering of markers when filters, color mode, or overlays change.
+The map rendering logic is implemented in the \texttt{MapComponent.jsx} module (approximately 900 lines), which acts as the spatial rendering engine of the frontend. It is responsible for constructing the Leaflet map instance and managing the lifecycle of all map overlays. Unlike static map outputs, this component must support dynamic re-rendering of markers when filters, color mode, or overlays change.
 
 \paragraph{Map initialization.}
-Upon mounting, \texttt{MapComponent.jsx} initializes a Leaflet map via the \texttt{react-leaflet} \texttt{<MapContainer>} component. The initial configuration sets a default center at approximately $64.96^{\circ}$\,N, $-19.02^{\circ}$\,W with zoom level~6, appropriate for a full-Iceland view. The map is configured with \texttt{preferCanvas=true} for canvas-accelerated rendering, \texttt{zoomSnap=0.5} and \texttt{zoomDelta=0.5} for half-step zoom increments, and \texttt{minZoom=5.5} to prevent users from zooming out beyond Iceland's context. A \texttt{MapReadyHandler} subcomponent calls \texttt{map.invalidateSize()} after 150\,ms to ensure correct sizing after CSS layout completion.
+Upon mounting, \texttt{MapComponent.jsx} initializes a Leaflet map via the \texttt{react-leaflet} \texttt{<MapContainer>} component. The initial configuration sets a default center at approximately $64.96^{\circ}$\,N, $-19.02^{\circ}$\,W with zoom level~6, appropriate for a full-Iceland view. The map uses \texttt{preferCanvas=false} (SVG renderer) to preserve the browser's native right-click context menu on markers, \texttt{zoomSnap=0.5} and \texttt{zoomDelta=0.5} for half-step zoom increments, and \texttt{minZoom=4.5} to prevent users from zooming out beyond Iceland's context. A \texttt{FitIcelandOnReady} subcomponent calls \texttt{map.fitBounds()} on mount to fit Iceland to the viewport and then locks \texttt{minZoom} dynamically to that fitted level. A \texttt{MapReadyHandler} subcomponent additionally calls \texttt{map.invalidateSize()} after 150\,ms and 500\,ms to ensure correct sizing after CSS layout completion.
 
 \paragraph{Marker creation and updates.}
-Earthquake markers are rendered as square-shaped SVG symbols using Leaflet's \texttt{L.divIcon} API. Each marker's icon is an inline SVG element whose size and color are computed from magnitude and the active color mode. Marker pixel sizes follow a sublinear growth function:
+Earthquake markers are rendered as \textbf{circular markers} using Leaflet's \texttt{L.circleMarker} API. Each marker has a fixed radius of 5\,px (7\,px when selected) and a color computed from the magnitude and the active color mode. The radius is intentionally uniform across all magnitudes; visual weight is conveyed through color intensity rather than size, keeping the map uncluttered when thousands of events are displayed.
 
-\[
-\text{px} = \text{round}\!\left(8 + \left(\frac{M_w - 2.7}{M_{w,\max} - 2.7}\right)^{0.7} \times 6\right)
-\]
-
-yielding sizes from 8\,px (smallest events) to 14\,px (largest). The exponent of 0.7 ensures that small-magnitude events cluster tightly while large events receive proportionally more visual weight.
-
-All earthquake markers are managed through a single \texttt{L.layerGroup}, enabling $O(1)$ show/hide operations for the entire layer. This is a significant performance improvement over the Google Maps version, which required iterating through individual markers. Marker objects are stored in a \texttt{Map<quakeKey, \{marker, quake, index\}>} structure, and when the selected earthquake changes, only the two affected markers (previous and new selection) are updated rather than the entire collection.
+All earthquake markers are managed through a single \texttt{L.layerGroup}, enabling $O(1)$ show/hide operations for the entire layer. This is a significant performance improvement over the Google Maps version, which required iterating through individual markers. Markers are sorted ascending by magnitude before insertion so that higher-magnitude events appear on top in the SVG stack. Marker objects are stored in a \texttt{Map<quakeKey, \{marker, quake, index\}>} structure, and when the selected earthquake changes, only the two affected markers (previous and new selection) are updated rather than the entire collection.
 
 \paragraph{Color encoding.}
 Two color modes are supported:
 
 \begin{itemize}
-    \item \textbf{Timeline mode:} markers are colored by month using a 12-stop twilight palette ranging from light purple (January) through dark indigo (summer) to green (December). The color is determined by \texttt{date.getUTCMonth()}.
-    \item \textbf{Magnitude mode:} markers are colored using a 5-stop viridis-like palette from yellow ($M_{w,\min}$) through green and teal to deep purple ($M_{w,\max}$), interpolated linearly based on the normalized magnitude.
+    \item \textbf{Timeline mode:} markers are colored by month using a 12-stop wine/mauve palette. January starts at a muted dusty rose (\texttt{\#b07888}); colors darken progressively through burgundy shades toward near-black in December (\texttt{\#0c0208}). The color is determined by \texttt{date.getUTCMonth()}, so all events in the same calendar month share the same hue regardless of the year. This palette was chosen for legibility on both light and dark basemaps.
+    \item \textbf{Magnitude mode:} markers are colored using a 5-stop blue palette from light slate blue (\texttt{\#8aa0c0}, $M_{w,\min}$) through progressively darker navy tones to deep navy (\texttt{\#060820}, $M_{w,\max}$), interpolated linearly based on the normalized magnitude $t = (M_w - M_{w,\min}) / (M_{w,\max} - M_{w,\min})$.
 \end{itemize}
 
 \paragraph{Event selection and the information panel.}
@@ -1237,7 +1284,7 @@ The heatmap mode, introduced in the Leaflet version, uses the \texttt{leaflet.he
 \subsection{Basemap Selection}
 \label{subsec:frontend_maptypeselector}
 
-The basemap selector provides four modes: standard roadmap (OpenStreetMap), satellite imagery (Esri World Imagery), a dark theme (CartoDB Dark Matter), and a density-based heatmap (CartoDB Dark Matter with a label overlay pane). This represents an expansion from the three modes available in the previous Google Maps version, with the heatmap being a new addition enabled by the Leaflet plugin ecosystem.
+The basemap selector provides four modes: standard roadmap (self-hosted PMTiles vector tiles rendered via MapLibre~GL), satellite imagery (Esri World Imagery), a dark theme (Esri World Dark Gray Base), and a density-based heatmap (Esri World Dark Gray Base with a separate World Dark Gray Reference label overlay pane). This represents an expansion from the three modes available in the previous Google Maps version, with the heatmap being a new addition enabled by the Leaflet plugin ecosystem.
 
 From an architectural standpoint, this component does not manage map state directly. Instead, it emits the selected map mode to \texttt{App.jsx}, which updates the global state. \texttt{MapComponent.jsx} then applies the correct tile layer configuration through the \texttt{TileLayerManager} subcomponent.
 
@@ -1273,9 +1320,9 @@ The thesis emphasis is the interaction logic: a single dataset supports multiple
 \subsection{Volcano Overlay}
 \label{subsec:frontend_volcano}
 
-The volcano overlay is a supplementary spatial layer that can be toggled on and off. When enabled, volcano markers are rendered as distinct orange/red triangle symbols (20$\times$20\,px SVG icons), visually separated from the square earthquake markers. This layer supports contextual interpretation: clusters of seismicity can be compared against known volcanic systems.
+The volcano overlay is a supplementary spatial layer that can be toggled on and off. When enabled, volcano markers are rendered as distinct orange/red triangle symbols (20$\times$20\,px SVG icons, fill colour \texttt{\#ff3c00}), visually separated from the circular earthquake markers. This layer supports contextual interpretation: clusters of seismicity can be compared against known volcanic systems.
 
-From an architectural perspective, \texttt{VolcanoMarker.jsx} uses Leaflet's imperative API via the \texttt{useMap()} hook from \texttt{react-leaflet}, creating \texttt{L.marker} instances with custom \texttt{L.divIcon} SVG icons directly on the map. This imperative approach was chosen because it provides finer control over marker lifecycle than the declarative \texttt{react-leaflet} \texttt{<Marker>} component. Each volcano marker is manually cleaned up on unmount via \texttt{map.removeLayer(marker)}. The component renders no JSX and returns \texttt{null}.
+From an architectural perspective, \texttt{VolcanoMarker.jsx} uses Leaflet's imperative API via the \texttt{useMap()} hook from \texttt{react-leaflet}, creating \texttt{L.marker} instances with custom \texttt{L.divIcon} icons (wrapping an \texttt{<img>} element whose \texttt{src} is an inline SVG data-URI) directly on the map. On first use the component creates a dedicated Leaflet pane, \texttt{volcanoPane}, with a \texttt{z-index} of 390, ensuring that volcano markers render above standard tile layers but below pop-up panels. This imperative approach was chosen because it provides finer control over marker lifecycle than the declarative \texttt{react-leaflet} \texttt{<Marker>} component. Each volcano marker is manually cleaned up on unmount via \texttt{map.removeLayer(marker)}. The component renders no JSX and returns \texttt{null}.
 
 \subsection{Latitude/Longitude Grid Overlay}
 \label{subsec:frontend_grid}
@@ -1291,7 +1338,17 @@ As with the volcano overlay, the grid is controlled via a toggle in the interfac
 \subsection{About Modal}
 \label{subsec:frontend_about}
 
-The About panel is a modal overlay that explains the system and its data sources. Opening it does not touch the map state, filters, selected markers, and overlays remain exactly as they were, so users can check what the tool does without accidentally resetting their analysis.
+The About panel is a modal overlay that provides reference information about the system. It is structured into several sections:
+
+\begin{itemize}
+    \item \textbf{Overview:} describes the purpose of MPGV Monitor, its coverage of 33 Icelandic volcanic systems, and the $M_w \geq 2.7$ detection threshold, along with brief descriptions of the two primary data sources (MPGV catalogue and Skjálftalísa API).
+    \item \textbf{Data export:} a button that downloads the full merged earthquake catalogue (all events from June~2020 onward, $M_w \geq 2.7$) as a CSV file by calling the \texttt{/earthquakes\_csv} backend endpoint.
+    \item \textbf{Contact:} lists the academic contacts responsible for the system (email addresses at the University of Iceland).
+    \item \textbf{Credits:} lists the project contributors (thesis author, supervisor, and advisor).
+    \item \textbf{Disclaimer:} notes that the system is optimised for desktop browsers and that mobile support is limited.
+\end{itemize}
+
+Opening the About panel does not touch the map state; filters, selected markers, and overlays remain exactly as they were. The panel can be closed by clicking the close button, pressing \texttt{Esc}, or clicking the backdrop. Focus is moved to the close button on mount to support keyboard navigation. A version identifier (\texttt{1.0}) is displayed in the panel footer.
 
 \subsection{State Interaction Model and Cross-Component Consistency}
 \label{subsec:frontend_state_model}
@@ -1326,7 +1383,7 @@ Marker icons      & \texttt{useMemo} on deps & Avoid per-render recalculation \\
 Tile loading      & \texttt{updateWhenZooming=false} & Smooth zoom, fewer blanks \\
 Tile buffering    & \texttt{keepBuffer=4} & Pre-loaded surrounding tiles \\
 Heatmap           & Rebuild on data/zoom only & Panning is free ($\sim$60\,FPS) \\
-Canvas rendering  & \texttt{preferCanvas=true} & Significantly faster redraws \\
+SVG renderer      & \texttt{preferCanvas=false} & Right-click shows native context menu \\
 Zoom animation    & \texttt{zoomSnap=0.5} & Half-step snapping, smoother UX \\
 TimeWindow slider & Stable wheel handler via \texttt{useRef} & No listener re-registration \\
 \hline
@@ -1377,13 +1434,13 @@ IRIS IEB & Global & Research/education & Large-scale querying; export tools & No
 \label{tab:seismic_comparison}
 \end{table}
 
-Table~\ref{tab:seismic_comparison} summarizes the positioning of MPGV Monitor relative to established earthquake web platforms. While global systems prioritize breadth of coverage and public dissemination, MPGV Monitor emphasizes depth within a specific geographic domain through multi-source reconciliation and analytical interaction design.
+The table makes the trade-off visible: every platform that covers the whole world cannot also be tuned to the specific data sources, catalogue quirks, and institutional context of Iceland. MPGV Monitor trades breadth for that depth.
 
 
 \subsection{Summary}
 \label{subsec:frontend_summary}
 
-Taken together, the frontend replaces the earlier Google Maps dependency with a Leaflet-based map that pulls its tiles from three free providers (OpenStreetMap, Esri World Imagery, CartoDB Dark Matter) and talks to the backend exclusively through \texttt{api.js}. Users can filter by time at multiple resolutions, set a magnitude threshold, switch marker colour between timeline and magnitude encoding, toggle a density heatmap, and overlay volcano markers or a lat/lon grid, all without the backend needing to know which view is active. Canvas rendering, layer-group visibility toggling, and memoised icon computation keep the interface responsive even when several thousand markers are on screen. The practical upshot is an analytical map that costs nothing to serve, stays snappy under load, and leaves every data decision to the backend.
+Replacing Google Maps with Leaflet removed the one external dependency that would have made handing this over to the Icelandic Meteorological Office complicated: a paid API key. The roadmap view uses a self-hosted PMTiles file so there is no tile CDN to depend on; satellite and dark mode pull from Esri free-tier services. Everything the frontend knows about the data comes through \texttt{api.js} talking to the backend. The filtering, the colour encoding, the heatmap, the volcano overlay, the lat/lon grid, none of it changes what the backend serves. That independence is what made the Google Maps migration cost nothing on the server side, and it should make future frontend changes equally isolated.
 
 
 % ============================ CHAPTER 7 ============================
@@ -1408,7 +1465,7 @@ The initial heatmap implementation used a single fixed radius, which looked acce
 \label{tab:heatmap-radii}
 \end{table}
 
-The gradient was also redesigned from a generic red--yellow ramp to a four-stop scale (transparent $\rightarrow$ blue $\rightarrow$ yellow $\rightarrow$ red) that gives a clearer visual separation between low-density background and high-density clusters such as the Reykjanes swarms.
+The gradient was also redesigned from a generic red--yellow ramp to a seven-stop scale (transparent $\rightarrow$ dark indigo-blue $\rightarrow$ medium blue $\rightarrow$ teal $\rightarrow$ amber $\rightarrow$ orange $\rightarrow$ deep red) that gives a clearer visual separation between low-density background and high-density clusters such as the Reykjanes swarms. The maximum weight is set to 1.3 to match the heaviest event weight, ensuring the full colour gradient is utilized rather than saturating at the top.
 
 \subsubsection{Latitude/Longitude Grid Overlay}
 
@@ -1416,12 +1473,12 @@ The grid overlay draws degree lines across the visible map extent and labels the
 
 \subsubsection{Marker Rendering Performance}
 
-With the full dataset loaded (1\,781 merged events), the original SVG-based markers caused noticeable lag during panning and zooming on mid-range hardware. Three changes brought the frame rate back to acceptable levels:
+With the full dataset loaded (1\,781 merged events), the original per-marker DOM manipulation caused noticeable lag during filter changes on mid-range hardware. Three changes brought the frame rate back to acceptable levels:
 
 \begin{enumerate}
-    \item \textbf{Canvas acceleration.} Setting \texttt{preferCanvas: true} on the Leaflet map instance routes all vector rendering through a single \texttt{<canvas>} element rather than creating individual DOM nodes per marker.
-    \item \textbf{Layer-group visibility.} Instead of adding and removing markers from the map on every filter change, all markers are placed in a \texttt{L.layerGroup} at load time. Filtering then toggles the group's visibility, an O(1) operation, rather than iterating through thousands of individual layers.
-    \item \textbf{Memoised icon computation.} Each earthquake marker's \texttt{L.divIcon} is generated by a function that caches its output based on magnitude band and colour mode. This avoids regenerating identical SVG strings on every render cycle.
+    \item \textbf{SVG \texttt{L.circleMarker} with fixed radius.} Switching from \texttt{L.divIcon} (individual DOM nodes with inline SVG) to \texttt{L.circleMarker} reduces the per-marker overhead. A fixed radius of 5\,px (7\,px when selected) is used instead of a magnitude-scaled size, keeping all markers lightweight and uniformly fast to style.
+    \item \textbf{Layer-group visibility.} Instead of adding and removing markers from the map on every filter change, all markers are placed in a \texttt{L.layerGroup} at load time. Filtering then toggles the group's visibility, an $O(1)$ operation, rather than iterating through thousands of individual layers.
+    \item \textbf{Memoised icon computation.} The per-marker color and size (stored as \texttt{markerIcons}) is computed once via \texttt{useMemo} and only recomputed when \texttt{earthquakes}, \texttt{colorOwner}, or \texttt{maxMagnitude} change, avoiding per-render recalculation.
 \end{enumerate}
 
 \subsubsection{Z-Index Alignment}
@@ -1499,12 +1556,23 @@ This early deployment highlighted several practical considerations:
 
 These lessons directly inform the planned production deployment strategy described below.
 
-\subsection{Planned Production Deployment}
+\subsection{Production Deployment}
 
-The current Leaflet-based version of MPGV Monitor is under active development and has not yet been deployed to a production server. The planned deployment will proceed in two stages:
+The Leaflet-based version of MPGV Monitor has been deployed to a production server at the University of Iceland and is currently running. Deployment proceeds in two stages:
 
 \begin{enumerate}
-    \item \textbf{Internal testing deployment:} The application will first be deployed to a local university or institutional server for internal review, performance validation, and user acceptance testing. This stage will use a production-grade WSGI server (such as \texttt{gunicorn} behind a reverse proxy like \texttt{nginx}) together with a process manager (\texttt{systemd}) for automatic restart and log management.
+    \item \textbf{Internal testing deployment (completed):} The application is currently running on \texttt{pluto.cs.hi.is}, a Linux server (Ubuntu~24.04 LTS) managed by the University of Iceland's Computer Science department. It is accessible at \texttt{http://pluto.cs.hi.is/mpgv/}, where the university's web infrastructure proxies incoming requests from port~80 to the \texttt{gunicorn} process on port~6000.
+
+    Deployment is handled by a \texttt{deploy.sh} script that covers the full update cycle in a single command. It sets up a Python virtualenv if needed, installs backend and frontend dependencies, and builds the React frontend with \texttt{VITE\_BASE\_PATH=/mpgv/} so that all asset paths resolve correctly under the proxy subpath. Before starting a new server instance it checks whether one is already running via a PID file and stops it gracefully if so. The new \texttt{gunicorn} process is started in the background with \texttt{nohup} and its output redirected to \texttt{server.log}; a companion \texttt{stop.sh} script reads the PID file to shut it down cleanly when needed.
+
+    \texttt{gunicorn} runs with one worker process and eight threads (\texttt{gthread} worker class, 120\,s timeout). The decision to use a single worker rather than several was deliberate: multiple workers would each start their own APScheduler instance, and those concurrent scraping jobs would race on the SQLite database. A single worker with eight threads gives enough concurrency for the expected load -- a handful of simultaneous users each fetching one JSON payload -- without that problem. The Flask application serves the pre-built frontend bundle directly, so no separate static file server is needed, and the SQLite database persists across restarts, so the full historical catalogue from June~2020 onward is available immediately after each redeployment.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=\linewidth]{Screenshots/deployed_pluto.png}
+        \caption{Terminal output of a successful \texttt{deploy.sh} run on the Pluto server, showing dependency installation, frontend build, and \texttt{gunicorn} startup on port~6000.}
+    \end{figure}
+
     \item \textbf{Public production deployment:} Following successful internal testing, the application is intended to be deployed for public access through the Icelandic Meteorological Office (IMO). This deployment will require addressing tile provider licensing (see Section~\ref{subsec:tile_licensing}), configuring HTTPS, and ensuring the system meets the operational requirements for a publicly accessible monitoring tool.
 \end{enumerate}
 
@@ -1520,48 +1588,31 @@ MPGV Monitor now handles the core loop, pulling data in, reconciling it, and let
 
 \subsection{Accessibility and Inclusive Design}
 
-The current interface assumes mouse-driven interaction and does not yet meet formal accessibility standards. WCAG~2.1 \cite{WCAG21} organises its guidance around four principles, perceivable, operable, understandable, and robust, each of which points to concrete gaps in the existing frontend.
+The current interface assumes a mouse and does not meet formal accessibility standards. WCAG~2.1 \cite{WCAG21} organises its guidance around four principles, perceivable, operable, understandable, and robust, and the existing frontend falls short on most of them.
 
-Planned accessibility enhancements include:
+The most important gap is keyboard navigation. None of the interactive controls, the TimeWindow slider, the magnitude scale, the map type selector, or the overlay toggles, can currently be operated without a mouse. Adding full keyboard support would open the tool to users who rely on assistive switch devices or keyboard-only navigation. Alongside that, ARIA labels and roles need to be added to map markers, information panels, and controls so that screen reader software can convey the interface structure to visually impaired users \cite{WAI_ARIA}. The SVG-based earthquake and volcano icons would also need text alternatives.
 
-\begin{itemize}
-    \item \textbf{Keyboard navigation:} Ensuring that all interactive controls, including the TimeWindow slider, magnitude scale, map type selector, and overlay toggles, are fully operable via keyboard input, without requiring a mouse or touch interaction. This is particularly important for users with motor impairments who rely on keyboard-only navigation or assistive switch devices.
-    \item \textbf{Screen reader compatibility:} Adding ARIA (Accessible Rich Internet Applications) labels and roles to map markers, information panels, and interactive controls so that screen reader software can convey the interface structure and earthquake data to visually impaired users \cite{WAI_ARIA}. This includes providing text alternatives for the SVG-based earthquake and volcano marker icons.
-    \item \textbf{High-contrast and colorblind-safe modes:} Introducing alternative color palettes designed to remain distinguishable for users with color vision deficiencies (such as deuteranopia and protanopia). Research on colorblind-safe visualization palettes, such as the work by Brewer \cite{Brewer2003ColorBrewer}, provides established guidance for selecting color schemes that maintain perceptual distinctness across common forms of color blindness.
-    \item \textbf{Text scaling and readability:} Ensuring that all text elements (labels, legends, information panels) respect browser-level font size preferences and remain readable when scaled up to 200\%, in accordance with WCAG Success Criterion~1.4.4.
-    \item \textbf{Focus management:} Implementing visible focus indicators and logical tab ordering across the interface, so that keyboard users can orient themselves within the application at all times.
-\end{itemize}
+On the visual side, the existing colour palettes have not been tested against common forms of colour vision deficiency. An earlier version of the timeline colour ramp used a green-to-red gradient that was hard to read for users with deuteranopia; the current wine/mauve palette is better but a formally colourblind-safe alternative, drawing on established guidance from Brewer \cite{Brewer2003ColorBrewer}, would be more robust. Text elements should also respect browser font-size preferences and stay legible when scaled to 200\%, in line with WCAG Success Criterion~1.4.4.
 
-These changes would open the tool to keyboard-only users, screen-reader users, and people with colour vision deficiencies, bringing the interface closer to WCAG~2.1 compliance.
+None of these changes are blocked by the architecture; they are a matter of time and priority.
 
 \subsection{Automated Data Analysis and Visualization}
 
-The current system provides raw and reconciled earthquake data through its API and CSV export functionality, but the interpretation of this data is left entirely to the user. A natural next step is adding built-in analysis features so that users do not have to export CSV files to see basic statistics or trends.
+Right now, interpretation is left to the user. The API and CSV export make all the data available, but a researcher who wants a Gutenberg--Richter plot or a depth cross-section still has to download the CSV and open it in R or MATLAB. Adding built-in analysis would make the system more useful to the IMO staff and geoscientists who are the primary audience.
 
-Because MPGV Monitor continuously ingests data from MPGV and Skjálftalísa through its reconciliation pipeline, it maintains a multi-year, deduplicated dataset that automated analysis can run against directly. Planned analytical features include:
+The Gutenberg--Richter law ($\log_{10} N = a - bM$) \cite{GutenbergRichter1944} is a natural starting point: an interactive frequency--magnitude plot that updates as the user adjusts the time window and magnitude filter would let researchers check the completeness threshold of the catalogue and compare b-values across zones. Temporal histograms showing daily or weekly event counts would make swarm activity and seasonal patterns visible at a glance, which would have been immediately useful during the 2021--2024 Reykjanes sequence.
 
-\begin{itemize}
-    \item \textbf{Temporal distribution charts:} Automatically generated histograms and time-series plots showing earthquake frequency over configurable time windows (daily, weekly, monthly, yearly). These visualizations would allow users to identify swarm activity, seasonal patterns, and long-term trends at a glance.
-    \item \textbf{Magnitude--frequency analysis:} Interactive Gutenberg--Richter plots that display the frequency--magnitude relationship for the current dataset or a user-selected subset. The Gutenberg--Richter law ($\log_{10} N = a - bM$) is a fundamental tool in seismological analysis \cite{GutenbergRichter1944}, and providing an automated fit with confidence intervals would support both research and hazard assessment workflows.
-    \item \textbf{Spatial clustering analysis:} Automated identification and visualization of earthquake clusters using density-based algorithms such as DBSCAN \cite{Ester1996DBSCAN}. Spatial clustering is particularly relevant in Iceland, where earthquake swarms associated with volcanic activity or tectonic stress changes are common and scientifically significant.
-    \item \textbf{Depth distribution profiles:} Cross-sectional depth profiles along user-defined transects, enabling visualization of the vertical distribution of seismicity. Such profiles are valuable for distinguishing shallow tectonic earthquakes from deeper magma-related events.
-    \item \textbf{Summary dashboards and report generation:} A dashboard view that aggregates key statistics, total event count, maximum magnitude, mean depth, active regions, and reconciliation coverage, into a concise overview suitable for operational briefings. The system could also generate downloadable PDF or HTML reports summarizing seismic activity for a specified period.
-\end{itemize}
+For spatial analysis, automated clustering via DBSCAN \cite{Ester1996DBSCAN} could highlight active swarm zones without the user having to zoom in manually. Depth cross-sections along user-defined transects would help distinguish shallow tectonic events from deeper magma-related ones, a distinction that matters particularly in the Eastern Volcanic Zone. A summary dashboard with total event count, maximum magnitude, active regions, and reconciliation coverage would also serve operational briefings at the IMO better than the current raw map view.
 
-These features would be particularly valuable for staff at the Icelandic Meteorological Office, geoscientists studying Icelandic tectonics, and researchers from related fields who need quick analytical insights from the live earthquake catalogue without requiring separate analysis tools. The implementation would use existing JavaScript charting libraries (such as D3.js or Chart.js) on the frontend, with optional server-side computation for more intensive analyses.
+All of this would sit on top of the existing API without changing the backend. The frontend would use a charting library such as D3.js or Chart.js to render the analysis panels, keeping them independent of the map rendering layer.
 
 \subsection{Mobile Application}
 
-Beyond the web-based interface, another direction is a dedicated mobile application for iOS and Android. The current web interface works well on desktop, but a native app would bring features that are hard to replicate in a browser:
+The current interface is designed for desktop. It works on a phone in a pinch, but the controls are too small and the interaction model is wrong for touch. A dedicated mobile application would not just be a smaller version of the same thing; the main reason to build it is push notifications. Receiving an alert when a $M_w \geq 4.0$ event occurs anywhere in Iceland is something the existing web interface cannot do at all, and it is the feature most commonly requested during informal testing.
 
-\begin{itemize}
-    \item \textbf{Push notifications and earthquake alerts:} The main reason to build a mobile app is push notifications: real-time alerts whenever a significant earthquake is recorded by the system. Users could configure magnitude thresholds (for example, receive alerts only for events with $M_w \geq 4.0$) and geographic regions of interest. This would transform MPGV Monitor from a passive visualization tool into an active alerting system, providing immediate situational awareness to researchers, civil protection authorities, and members of the public.
-    \item \textbf{Offline map caching:} A mobile app could pre-download tile data and recent earthquake catalogues, enabling users to view seismic activity even in areas with limited or intermittent network connectivity, a practical consideration in rural and highland regions of Iceland.
-    \item \textbf{Location-aware features:} Using the device's GPS, the app could display the user's position relative to recent earthquake epicentres, calculate distances to active seismic zones, and provide location-specific hazard context.
-    \item \textbf{Touch-optimized interaction:} While the current web interface is designed for desktop use with mouse and keyboard, a mobile app could implement touch-optimized map controls, gesture-based timeline navigation (pinch-to-zoom on the time axis), and swipe-based event browsing tailored to smaller screens.
-\end{itemize}
+Beyond notifications, a native app could cache tile data and recent catalogue entries for offline use, which matters in highland areas of Iceland where connectivity is patchy. GPS-based positioning would let the app show the user's location relative to active seismic zones. And touch-optimized controls, pinch-to-zoom on the time axis, swipe-based event browsing, would feel more natural than adapting the current mouse-driven slider to a phone screen.
 
-The existing Flask REST API that serves the web frontend could be reused without modification as the backend for a mobile application, since the API already provides all earthquake, volcano, and ShakeMap data in standard JSON format. A cross-platform framework such as React Native or Flutter would allow a single codebase to target both iOS and Android while reusing the map visualization concepts established in the Leaflet-based web application.
+The backend would not need to change. The existing Flask API already returns everything a mobile client needs in standard JSON, so a cross-platform framework like React Native or Flutter could target iOS and Android from a single codebase while reusing the same map visualization concepts established in the Leaflet version.
 
 \subsection{Prediction Model}
 \label{subsec:prediction_model}
@@ -1576,12 +1627,12 @@ Initial models will focus on regression techniques for short-term rate forecasti
 The current Leaflet-based frontend uses freely available tile services that are suitable for development and low-traffic academic use. Before deploying the system as a public-facing service with significant traffic, the following licensing considerations must be addressed:
 
 \begin{itemize}
-    \item \textbf{OpenStreetMap}: free under the Open Database License, but high-traffic deployments should use a CDN or self-hosted tile server to comply with the OSM tile usage policy \cite{OSM_TileUsage}.
-    \item \textbf{Esri World Imagery}: available under a free tier with usage limits; a paid Esri licence may be required for production-scale usage.
-    \item \textbf{CartoDB (CARTO) Dark Matter}: available under a free tier; a paid CARTO plan may be required for higher volumes.
+    \item \textbf{PMTiles roadmap (OpenStreetMap-derived)}: the \texttt{iceland.pmtiles} file is already self-hosted and served alongside the frontend static assets, so it has no third-party dependency. The underlying OpenStreetMap data is free under the Open Database License (ODbL) \cite{OSM_TileUsage}, and no tile-request rate limits apply since tiles are fetched locally via HTTP range requests from the bundled file.
+    \item \textbf{Esri World Imagery}: used for the satellite basemap. Available under a free tier with usage limits; a paid Esri licence or switch to an alternative imagery provider (e.g., Mapbox Satellite, Google Maps Static API) may be required at production-scale traffic.
+    \item \textbf{Esri World Dark Gray Base and Reference}: used for dark mode and heatmap basemaps. Subject to the same Esri free-tier terms as World Imagery above.
 \end{itemize}
 
-An alternative approach is to deploy a self-hosted tile server (for example using OpenMapTiles or TileServer GL), which would eliminate reliance on third-party tile services entirely and provide full control over cartographic styling and availability.
+For high-traffic deployments, the Esri dependencies can be replaced with self-hosted alternatives (for example, a custom MapLibre GL dark style loaded from a self-hosted PMTiles file), which would eliminate all third-party tile requests and provide full control over cartographic styling and availability.
 
 \subsection{Database Migration}
 
@@ -1589,14 +1640,7 @@ A migration from SQLite to PostgreSQL is under consideration to handle larger da
 
 \subsection{Additional Enhancements}
 
-Other planned improvements include:
-
-\begin{itemize}
-    \item \textbf{Enhanced caching and rate limiting:} Implementing Redis-based response caching and API rate limiting to support higher concurrent user loads in production.
-    \item \textbf{Real-time hazard indicators:} Integration of additional real-time data streams such as GPS deformation measurements, volcanic gas emissions, or InSAR-derived ground displacement maps, which would provide richer context for interpreting seismic activity.
-    \item \textbf{Mobile-responsive web layout:} In addition to a dedicated mobile application, development of a responsive web design that adapts the existing interface for use on tablets and mobile browsers.
-    \item \textbf{Multilingual support:} Adding Icelandic language support alongside English to improve usability for local stakeholders and the general public in Iceland.
-\end{itemize}
+A few smaller improvements are worth noting separately. The current in-memory 60-second cache works for a handful of users but would need to move to Redis for anything approaching production-scale traffic; rate limiting should come with it. Multilingual support, adding Icelandic alongside English, would help with local adoption and would matter if the IMO eventually points visitors there. A responsive layout for tablets and mobile browsers is also needed before the tool can be shared publicly without a disclaimer about desktop-only support. Further out, integrating additional real-time data streams, GPS deformation measurements, volcanic gas emissions, or InSAR-derived ground displacement, would give seismologists richer context for interpreting seismic patterns, though that goes beyond what a single thesis can cover.
 
 % ============================ CHAPTER 10 ============================
 \section{Conclusion}
@@ -1654,7 +1698,7 @@ pip install -r requirements.txt
 python app.py
 \end{verbatim}
 
-The server listens on port \textbf{5001} by default. On first launch it creates \texttt{data/earthquakes.db}, runs the initial scrape from all three data sources, and begins the three-minute APScheduler cycle. Log output confirms each completed scrape and reconciliation pass.
+The server listens on port \textbf{5002} by default. On first launch it creates \texttt{data/earthquakes.db}, runs the initial scrape from all three data sources, and begins the three-minute APScheduler cycle. Log output confirms each completed scrape and reconciliation pass. Note: the frontend \texttt{api.js} module hard-codes port~5001 for local development; the \texttt{BACKEND\_PORT} environment variable (or a direct edit to \texttt{app.py}) must be set to \textbf{5001} if the default backend port is not changed, to ensure the two processes agree.
 \end{enumerate}
 
 \subsection*{Frontend Setup}
@@ -1691,7 +1735,7 @@ npm test
 \subsection*{Common Issues}
 
 \begin{itemize}
-    \item \textbf{Port already in use:} If port 5001 or 5174 is occupied, either stop the conflicting process or change the port in \texttt{app.py} (backend) or \texttt{vite.config.js} (frontend).
+    \item \textbf{Port already in use:} If port 5002 (backend default) or 5174 (Vite default) is occupied, either stop the conflicting process or change the port in \texttt{app.py} (backend) or \texttt{vite.config.js} (frontend). Note that \texttt{api.js} hard-codes port~5001 for local development; set \texttt{BACKEND\_PORT=5001} or update \texttt{api.js} accordingly if you change the backend port.
     \item \textbf{Missing \texttt{venv} on Linux:} Some distributions package \texttt{venv} separately. Install it with \texttt{sudo apt install python3-venv} (Debian/Ubuntu).
     \item \textbf{First scrape takes time:} The initial data pull from MPGV, Skjálftalísa, and EPOS can take 1--2 minutes. Subsequent three-minute cycles are incremental and much faster.
 \end{itemize}
@@ -1701,7 +1745,7 @@ npm test
 \section{API Reference}
 \label{app:api}
 
-The Flask backend exposes the following REST endpoints. All responses are JSON unless otherwise noted. The base URL in development is \texttt{http://localhost:5001}.
+The Flask backend exposes the following REST endpoints. All responses are JSON unless otherwise noted. The backend default port is \texttt{5002}; \texttt{api.js} targets \texttt{http://localhost:5001} in development, so either environment variable \texttt{BACKEND\_PORT} or \texttt{api.js} must be aligned accordingly.
 
 \begin{table}[H]
 \centering
