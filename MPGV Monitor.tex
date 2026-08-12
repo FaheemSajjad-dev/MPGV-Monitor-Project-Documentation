@@ -769,14 +769,14 @@ Figures~\ref{fig:mpgv-source-interface} and~\ref{fig:quakes-api-interface} recor
 \clearpage
 \begin{figure}[p]
 \centering
-\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/data-source-mpgv-archive-table.png}}
+\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/hraun vedur mpgv data.png}}
 \caption{MPGV archive table used by the HTML acquisition path. The source presents event measurements and related archive columns in a wide tabular interface. This capture documents the external interface appearance on 12~August~2026; the parser retains only the fields and rows described in Section~\ref{subsubsec:mpgv-acquisition}.}
 \label{fig:mpgv-source-interface}
 \end{figure}
 
 \begin{figure}[p]
 \centering
-\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/data-source-imo-quakes-api.png}}
+\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/Quakes API.png}}
 \caption{IMO Quakes API documentation used by the machine-readable acquisition path. The interface exposes the event collection and event-identifier operations; MPGV Monitor uses the collection route and applies the request, normalisation, and persistence rules described in Section~\ref{subsubsec:quakes-api-acquisition}. The capture was made on 12~August~2026.}
 \label{fig:quakes-api-interface}
 \end{figure}
@@ -1235,17 +1235,18 @@ The national faults-and-fissures view is shown first in Figure~\ref{fig:frontend
 \clearpage
 \begin{figure}[p]
 \centering
+\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/frontend-map-overview.png}}
+\caption{Current Map route at national scale in its base state. The full-width view shows the application identity, map-type selector, earthquake distribution, timeline and magnitude controls, overlay toggles, and map action rail before an individual event is selected.}
+\label{fig:frontend-map-current}
+\end{figure}
+
+\begin{figure}[p]
+\centering
 \makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/frontend-map-faults-overlay.png}}
 \caption{Current national Map view with the EGDI/HIKE faults and fissures overlay enabled. The enlarged view shows the structural linework, its legend, earthquake distribution, and the active magnitude encoding at the same scale used for the base Map view.}
 \label{fig:frontend-faults-overlay}
 \end{figure}
 
-\begin{figure}[p]
-\centering
-\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/frontend-map-overview.png}}
-\caption{Current Map route at national scale in its base state. The full-width view shows the application identity, map-type selector, earthquake distribution, timeline and magnitude controls, overlay toggles, and map action rail before an individual event is selected.}
-\label{fig:frontend-map-current}
-\end{figure}
 
 \begin{figure}[p]
 \centering
@@ -1257,10 +1258,11 @@ The national faults-and-fissures view is shown first in Figure~\ref{fig:frontend
 
 \begin{figure}[p]
 \centering
-\includegraphics[height=0.72\textheight]{Updated Screenshots/frontend-map-controls.png}
+\includegraphics[height=0.5\textheight]{Updated Screenshots/frontend-map-controls.png}
 \caption{Detail of the current left-side Map controls. The enlarged view shows the colour-mode selector, overlay switches, timeline and magnitude controls, active date range, and vertical map action rail.}
 \label{fig:frontend-map-controls}
 \end{figure}
+\newpage
 
 \begin{figure}[p]
 \centering
@@ -1309,16 +1311,27 @@ Figure~\ref{fig:frontend-insights-current} shows the current Insights route at t
 
 \begin{figure}[H]
 \centering
+
 \textbf{(a) Filters and catalogue summary}\par
-\includegraphics[width=0.94\linewidth]{Updated Screenshots/frontend-insights-filters.png}
+\makebox[\linewidth][c]{%
+  \includegraphics[width=1.10\linewidth]
+    {Updated Screenshots/frontend-insights-filters.png}%
+}
+
 \vspace{0.35em}
 
 \textbf{(b) Analytical charts}\par
-\includegraphics[width=0.94\linewidth]{Updated Screenshots/frontend-insights-charts.png}
-\caption{Current Insights route: applied date, magnitude, depth, source-quality, and grouping controls with the catalogue and depth-quality summaries (a), and four of the five implemented chart panels visible in the captured viewport (b). The category-over-time chart and result tables continue below the capture.}
+\makebox[\linewidth][c]{%
+  \includegraphics[width=1.10\linewidth]
+    {Updated Screenshots/frontend-insights-charts.png}%
+}
+
+\caption{Current Insights route: applied date, magnitude, depth, source-quality,
+and grouping controls with the catalogue and depth-quality summaries (a), and
+four of the five implemented chart panels visible in the captured viewport (b).
+The category-over-time chart and result tables continue below the capture.}
 \label{fig:frontend-insights-current}
 \end{figure}
-
 \subsection{Responsive and Accessibility Implementation}
 \label{subsec:frontend_responsive_accessibility}
 
