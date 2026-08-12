@@ -1,4 +1,5 @@
 % Thesis Documentation Template for "MPGV monitor: Dynamic Visualisation of Seismic Data for Iceland"
+\pdfminorversion=7
 
 \documentclass[12pt]{article}
 \usepackage[a4paper]{geometry}
@@ -31,6 +32,8 @@
 \captionsetup{font={small,it}, labelfont={bf,it}, margin=2cm} % Italic captions — matches HÍ template
 \usepackage{siunitx}
 \usepackage{float}
+\newfloat{codelisting}{tbp}{lol}
+\floatname{codelisting}{Listing}
 \usepackage[shortlabels]{enumitem}
 \usepackage{hyperref}
 \hypersetup{
@@ -357,6 +360,8 @@ I am grateful to my supervisor, Kristján Jónasson, for his guidance throughout
 
 I thank the Faculty of Industrial Engineering, Mechanical Engineering and Computer Science at the University of Iceland for providing the computing resources and access to the Pluto server used during development.
 
+Generative AI tools were used selectively during the preparation of this thesis to support language refinement, document organisation, and the review of code-related explanations. Their output was treated as drafting assistance rather than as evidence or an authoritative source. Technical statements were checked against the implemented project and cited material, and responsibility for the final text, analysis, and conclusions remains with the author.
+
 Finally, I thank my family and friends for their encouragement and support throughout this work.
 
 % Blank page after acknowledgments
@@ -676,7 +681,7 @@ The current architecture can be read at five levels: external sources, acquisiti
 
 \begin{figure}[H]
 
-\centering    \includegraphics[width=\linewidth, height=16cm]{Updated Screenshots/MPGV_System_Architecture.png}
+\centering    \includegraphics[width=\linewidth, height=16cm, keepaspectratio]{Updated Screenshots/MPGV_System_Architecture.pdf}
 
 \caption[MPGV Monitor high-level current system architecture.]{\textbf{MPGV Monitor: High-Level Current System Architecture.} MPGV HTML and IMO Quakes API records are acquired, normalised, and persisted separately in SQLite raw source storage before reconciliation. Accepted output is written to the SQLite merged catalogue and delivered by Flask to the Map and Insights interfaces. Volcano metadata, ShakeMaps, and EGDI/HIKE linework follow separate contextual paths within the Pluto \texttt{/mpgv/} deployment.}
 \label{fig:project-system-overview}
@@ -759,6 +764,24 @@ API timestamps are converted to UTC and stored to second precision. GeoJSON coor
 
 Normalised IMO Quakes API source records use the event identifier as a stable source key. New identifiers are inserted; for an existing identifier, stored time, coordinate, depth, or magnitude values are updated only when at least one value has changed. The accepted records are persisted in one batch transaction. The HTTP client uses a timeout, validates HTTP status, and makes up to three attempts with short waits after failures. This improves resilience to transient failures, although it cannot guarantee source availability.
 
+Figures~\ref{fig:mpgv-source-interface} and~\ref{fig:quakes-api-interface} record the two public source interfaces from which these acquisition paths are derived. The MPGV capture illustrates the tabular archive structure parsed by the scraper, whereas the Quakes API capture shows the documented event-collection and event-identifier operations used as the machine-readable source boundary.
+
+\clearpage
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/data-source-mpgv-archive-table.png}}
+\caption{MPGV archive table used by the HTML acquisition path. The source presents event measurements and related archive columns in a wide tabular interface. This capture documents the external interface appearance on 12~August~2026; the parser retains only the fields and rows described in Section~\ref{subsubsec:mpgv-acquisition}.}
+\label{fig:mpgv-source-interface}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/data-source-imo-quakes-api.png}}
+\caption{IMO Quakes API documentation used by the machine-readable acquisition path. The interface exposes the event collection and event-identifier operations; MPGV Monitor uses the collection route and applies the request, normalisation, and persistence rules described in Section~\ref{subsubsec:quakes-api-acquisition}. The capture was made on 12~August~2026.}
+\label{fig:quakes-api-interface}
+\end{figure}
+\clearpage
+
 \subsection{Scheduled Acquisition and Persistence}
 \label{subsec:scheduled-acquisition}
 
@@ -805,7 +828,7 @@ Figure~\ref{fig:system-architecture} presents the active backend path. It distin
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.72\linewidth]{Updated Screenshots/Current backend architecture.png}
+\includegraphics[width=0.72\linewidth]{Updated Screenshots/Current backend architecture.pdf}
 \caption{Current backend architecture. Solid arrows show the main scheduled catalogue and control flow. Dotted arrows show auxiliary, contextual, or on-demand paths: volcano metadata are refreshed after successful canonical replacement, while ShakeMaps are requested on demand and are not part of the recurring reconciliation cycle.}
 \label{fig:system-architecture}
 \end{figure}
@@ -891,6 +914,32 @@ Allocation then proceeds in two stages. First, for every Quakes \texttt{event\_i
 
 This comparison resolves competition when more than one MPGV row is eligible for the same Quakes event. Second, the winning MPGV row is accepted as \texttt{matched} only if that MPGV row has exactly one candidate under the implemented ambiguity rule. An MPGV row with no candidate, more than one candidate, or a unique candidate won by another MPGV row remains \texttt{v\_only}. The final integrity checks ensure that no Quakes event identifier is assigned to more than one canonical row.
 
+Listing~\ref{lst:reconcile-allocation} shows the compact allocation step that enforces those two stages in the current backend.
+
+\begin{codelisting}[H]
+\centering
+\begin{minipage}{0.96\linewidth}
+\hrule
+\small
+\begin{verbatim}
+selected_by_s = {}
+for v in v_rows:
+    for score, dist, dt_abs, dm, s in v_candidates.get(v.id, []):
+        current = selected_by_s.get(s.event_id)
+        if current is None or score < current[0]:
+            selected_by_s[s.event_id] = (score, v.id, dist, dt_abs, dm, s)
+
+assigned = {}
+for s_event_id, (score, v_id, dist, dt_abs, dm, s) in selected_by_s.items():
+    if len(v_candidates.get(v_id, [])) == 1:
+        assigned[v_id] = (dist, dt_abs, dm, s)
+\end{verbatim}
+\hrule
+\end{minipage}
+\caption{One-to-one Quakes candidate allocation in \texttt{reconcile.py}.}
+\label{lst:reconcile-allocation}
+\end{codelisting}
+
 For an accepted match, the canonical record retains the exact MPGV source timestamp and MPGV robust-mean moment magnitude and uses the Quakes coordinates and depth. The diagnostic time, distance, and magnitude differences and both source identifiers are stored with the row. For \texttt{v\_only}, time, coordinates, depth, and magnitude remain the MPGV values. The analytical interface excludes MPGV-only depths by default and can include them only as labelled unverified source values, as described in Chapters~1 and~3.
 
 Reconciliation replaces only the requested date range. Replacement rows are assembled before the existing canonical rows in that range are deleted, and deletion plus insertion are committed together. A database error triggers rollback. This makes rerunning the procedure stable at the storage level and permits a later Quakes update to replace a previous \texttt{v\_only} result with a match. It does not make a successful match proof that the two source records represent the same physical earthquake, nor does it establish scientific accuracy for the selected output fields.
@@ -973,7 +1022,7 @@ The map-first route provides four map modes, client-side time and magnitude filt
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.98\linewidth]{Updated Screenshots/Current frontend component and rendering architecture.png}
+\includegraphics[width=0.98\linewidth]{Updated Screenshots/Current frontend component and rendering architecture.pdf}
 \caption{Current frontend component and rendering architecture. Shared application state supplies both routes; MapLibre manages map styles and geographic sources, while deck.gl renders and picks earthquake markers.}
 \label{fig:frontend-current-architecture}
 \end{figure}
@@ -1006,7 +1055,7 @@ The loading presentation has separate boundaries. Map style changes show a map-l
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.97\linewidth]{Updated Screenshots/Frontend data flow and request lifecycle.png}
+\includegraphics[width=0.97\linewidth]{Updated Screenshots/Frontend data flow and request lifecycle.pdf}
 \caption{Frontend data flow and request lifecycle. Backend algorithms remain behind the HTTP boundary; the map and Insights routes derive their own presentation state from the returned catalogue.}
 \label{fig:frontend-data-flow-current}
 \end{figure}
@@ -1022,10 +1071,46 @@ Layout changes can alter the dimensions available to the canvas when a side pane
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.96\linewidth]{Updated Screenshots/MapLibre lifecycle during a map-mode or layout change.png}
-\caption{MapLibre lifecycle during a map-mode or layout change. Camera state survives the keyed map remount, and the deck.gl overlay is moved to the active map instance.}
+\includegraphics[width=0.96\linewidth]{Updated Screenshots/MapLibre lifecycle during a map-mode or layout change.pdf}
+\caption{MapLibre lifecycle during a map-mode or layout change. Camera state survives the keyed map remount; on load the deck.gl overlay is reattached and the loading cover is removed, while ResizeObserver-driven resizing keeps the active canvas aligned with layout changes.}
 \label{fig:maplibre-lifecycle}
 \end{figure}
+
+The relevant component boundary is visible in Listing~\ref{lst:maplibre-camera}: the mode is the React key, while every movement writes the live camera values back to the persistent ref used by the next map instance.
+
+\begin{codelisting}[H]
+\centering
+\begin{minipage}{0.96\linewidth}
+\hrule
+\footnotesize
+\begin{verbatim}
+return (
+  <MapLibreMap
+    key={mapType}
+    ref={mapRef}
+    initialViewState={cameraRef.current}
+    style={{ width: "100%", height: "100%" }}
+    mapStyle={activeMapStyle}
+    maxBounds={ICELAND_BOUNDS_LNG_LAT}
+    minZoom={4}
+    maxZoom={18}
+    renderWorldCopies={false}
+    // Attribution and presentation props omitted.
+    onLoad={handleMapLoad}
+    onMove={(event) => {
+      const { longitude, latitude, zoom, bearing, pitch } = event.viewState;
+      cameraRef.current = { longitude, latitude, zoom, bearing, pitch };
+      setViewZoom(zoom);
+    }}
+    onMoveEnd={updateGrid}
+    onZoomEnd={updateGrid}
+    onClick={handleMapClick}
+\end{verbatim}
+\hrule
+\end{minipage}
+\caption{Keyed MapLibre map and persisted camera state in \texttt{MapComponent.jsx}.}
+\label{lst:maplibre-camera}
+\end{codelisting}
 
 \subsection{Map Modes, Sources, Labels, and Attribution}
 \label{subsec:frontend_map_modes}
@@ -1034,8 +1119,14 @@ The map selector emits one of four mode identifiers to \texttt{App.jsx}; it does
 
 \begin{table}[H]
 \centering
+\caption{Current map modes, sources, and layer composition. These are runtime network sources rather than a bundled PMTiles basemap.}
+\label{tab:current-map-sources}
 \small
-\begin{tabular}{p{2.0cm} p{4.2cm} p{7.4cm}}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{
+    >{\raggedright\arraybackslash}p{2.0cm}
+    >{\raggedright\arraybackslash}p{4.2cm}
+    >{\raggedright\arraybackslash}p{7.4cm}}
 \toprule
 \textbf{Mode} & \textbf{Primary source} & \textbf{Implemented composition} \\
 \midrule
@@ -1045,8 +1136,6 @@ Terrain & IMO terrain tiles & IMO raster basemap with a symbol-only label overla
 Heatmap & OpenFreeMap dark style & Dark vector style modified for density presentation, with a native MapLibre GeoJSON heatmap layer. \\
 \bottomrule
 \end{tabular}
-\caption{Current map modes, sources, and layer composition. These are runtime network sources rather than a bundled PMTiles basemap.}
-\label{tab:current-map-sources}
 \end{table}
 
 The OpenFreeMap style document is fetched once and its promise is reused when the roadmap and raster-label compositions require it; the dark style is cached separately. Style-processing functions select appropriate symbol layers, prefer Icelandic names where available, adjust label appearance for the raster backgrounds, and apply compact source attribution on small screens. MapLibre attribution and scale controls are positioned with the other bottom-right controls, and the displayed credits change with the active provider. Satellite attribution identifies Esri and its imagery contributors, terrain identifies IMO and associated sources, and vector modes identify OpenFreeMap, OpenMapTiles, and OpenStreetMap as configured in the component.
@@ -1087,7 +1176,7 @@ These encodings describe implemented mappings only. Chapter~6 does not infer per
 \subsection{Heatmap and Contextual Overlays}
 \label{subsec:frontend_overlays}
 
-\paragraph{Heatmap.} Heatmap mode converts the currently supplied earthquake records to GeoJSON and renders them through a native MapLibre \texttt{heatmap} layer. The per-event weights are 0.20 below magnitude~4, 0.30 from magnitude~4 to below~5, and 0.45 at magnitude~5 or above. Radius is linearly interpolated from 34~pixels at zooms~4 and~6 to 24~pixels at zoom~8 and 16~pixels at zoom~12. Intensity rises from 0.75 at zoom~4 to 1.15 at zoom~8 and 1.4 at zoom~12, while opacity decreases at higher zoom. The seven-stop density gradient moves from transparent indigo through blue, teal, amber, and orange to red. A MapLibre control displays a low-to-high density legend. Because the mode represents aggregate density, new marker picking, Recent Selections, and the fault overlay are unavailable while it is active. An event selected before the mode change can remain in shared state until an ordinary closure condition clears it, but the heatmap itself cannot select another individual event.
+\paragraph{Heatmap.} Heatmap mode converts the currently supplied earthquake records to GeoJSON and renders them through a native MapLibre \texttt{heatmap} layer. The per-event weights are 0.20 below magnitude~4, 0.30 from magnitude~4 to below~5, and 0.45 at magnitude~5 or above. Radius is linearly interpolated from 34~pixels at zooms~4 and~6 to 24~pixels at zoom~8 and 16~pixels at zoom~12. Intensity rises from 0.75 at zoom~4 to 1.15 at zoom~8 and 1.4 at zoom~12, while opacity decreases at higher zoom. The seven-stop density gradient moves from transparent indigo through blue, teal, amber, and orange to red. A MapLibre control displays a low-to-high density legend. Because the mode represents aggregate density, marker picking, Recent Selections, and the fault overlay are unavailable while it is active. Entering Heatmap clears the selected earthquake and volcano, and the heatmap cannot select an individual event.
 
 \paragraph{Volcanoes.} Volcano metadata are rendered with declarative MapLibre \texttt{Marker} elements using the application's volcano icon and an associated information card. The overlay can be toggled independently of earthquake filters. On desktop, enabling it opens \texttt{RightPanel}, which lists volcanoes alphabetically and allows the same selection state to be changed from the list or map. The right panel is not rendered on mobile. Volcano and earthquake selections are mutually exclusive, and a selected volcano is cleared automatically after 15~seconds.
 
@@ -1104,21 +1193,131 @@ Each new selection request starts a frontend call to \texttt{/shakemap\_lookup} 
 
 Every selected event is also inserted at the head of Recent Selections. Identity is based on date-time, latitude, and longitude; reselecting the same record moves it to the front rather than creating a duplicate. The list is truncated to ten entries and can be cleared. Its modal table includes a View on map action. Reopening an entry closes the modal, changes Heatmap to Map when necessary, selects the event, and moves the camera to it. Figure~\ref{fig:frontend-selection-flow} shows how the selected record coordinates these interactions.
 
+Listing~\ref{lst:recent-selection} shows the corresponding identity key, de-duplication, and ten-entry bound in the shared application state.
+
+\begin{codelisting}[H]
+\centering
+\begin{minipage}{0.96\linewidth}
+\hrule
+\footnotesize
+\begin{verbatim}
+const selectEarthquake = useCallback(quake => {
+    setSelectedEarthquake(quake);
+    if (!quake) return;
+    setEarthquakeSelectionRequestId(value => value + 1);
+    const key =
+        `${quake["Date-time"] ?? ""}|${quake.Latitude ?? ""}|`
+        + `${quake.Longitude ?? ""}`;
+    setRecentSelections(current => [
+        quake,
+        ...current.filter(item =>
+            `${item["Date-time"] ?? ""}|${item.Latitude ?? ""}|`
+            + `${item.Longitude ?? ""}` !== key
+        ),
+    ].slice(0, 10));
+}, []);
+\end{verbatim}
+\hrule
+\end{minipage}
+\caption{Selected-event state and bounded Recent Selections history in \texttt{App.jsx}.}
+\label{lst:recent-selection}
+\end{codelisting}
+
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.97\linewidth]{Updated Screenshots/Current event-selection interactions.png}
+\includegraphics[width=0.97\linewidth]{Updated Screenshots/Current event-selection interactions.pdf}
 \caption{Current event-selection interactions. The selected catalogue record coordinates the visible card, recent history, optional ShakeMap action, and return-to-map focus.}
 \label{fig:frontend-selection-flow}
 \end{figure}
 
+The national faults-and-fissures view is shown first in Figure~\ref{fig:frontend-faults-overlay}. Figure~\ref{fig:frontend-map-current} then records the uncluttered base Map route, followed by the selected-event state in Figure~\ref{fig:frontend-earthquake-selection}. Figure~\ref{fig:frontend-map-controls} isolates the control and legend area at a readable scale, and Figure~\ref{fig:frontend-volcano-overlay} gives the volcano interaction its own full-width view.
+
+\clearpage
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/frontend-map-faults-overlay.png}}
+\caption{Current national Map view with the EGDI/HIKE faults and fissures overlay enabled. The enlarged view shows the structural linework, its legend, earthquake distribution, and the active magnitude encoding at the same scale used for the base Map view.}
+\label{fig:frontend-faults-overlay}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/frontend-map-overview.png}}
+\caption{Current Map route at national scale in its base state. The full-width view shows the application identity, map-type selector, earthquake distribution, timeline and magnitude controls, overlay toggles, and map action rail before an individual event is selected.}
+\label{fig:frontend-map-current}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/frontend-earthquake-selection.png}}
+\caption{Current event inspection in Terrain mode. The enlarged interface view combines the active date range and magnitude encoding with the selected MPGV catalogue card and the event-level ShakeMap action.}
+\label{fig:frontend-earthquake-selection}
+\end{figure}
+\clearpage
+
+\begin{figure}[p]
+\centering
+\includegraphics[height=0.72\textheight]{Updated Screenshots/frontend-map-controls.png}
+\caption{Detail of the current left-side Map controls. The enlarged view shows the colour-mode selector, overlay switches, timeline and magnitude controls, active date range, and vertical map action rail.}
+\label{fig:frontend-map-controls}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.12\textwidth]{Updated Screenshots/frontend-volcano-selection.png}}
+\caption{Current volcano interaction in Terrain mode. The full-width view shows the enabled volcano overlay, selected-volcano information card, right-side alphabetical list, coordinate grid, and surrounding earthquake markers.}
+\label{fig:frontend-volcano-overlay}
+\end{figure}
+\clearpage
+
 \subsection{Map--Insights Navigation and State Behaviour}
 \label{subsec:frontend_map_insights}
+
+\subsubsection{Route Lifecycle and Map Coordination}
 
 The route is derived from the browser path and updated with the History API. Insights is loaded with \texttt{React.lazy} only when first requested. After that first mount, its container remains mounted and is hidden when the map route is active. This preserves both applied and draft Insights filters when the user returns to the map and later reopens Insights. The map container is likewise hidden rather than re-created by route navigation, so its filters and overlay choices remain in \texttt{App.jsx}.
 
 The two routes share the downloaded catalogue but intentionally do not share filter controls. Insights can filter by date, magnitude range, depth range, depth-quality policy, data category, and time grouping without replacing the map's date window or minimum-magnitude threshold. Its View on map action finds the corresponding original catalogue event by date-time and coordinates, returns to the map, and focuses that event. If Heatmap is active it first changes to Map because individual-event selection is not available in Heatmap.
 
 When the requested Insights event already satisfies the map filters, it is selected normally. If the active map filters exclude it, \texttt{App.jsx} appends that event as a temporary filter exception for 15~seconds. The existing map filters are not changed, and the exception is removed automatically. This makes the navigation target visible without silently rewriting either route's analytical state.
+
+\subsubsection{Filter Initialisation and Depth Policy}
+
+\texttt{AnalysisPage.jsx} first normalises the catalogue returned to \texttt{App.jsx}. It parses backend timestamps as UTC, converts coordinates and magnitude to numeric values, and assigns each row a presentation category of \texttt{matched} or \texttt{mpgv\_only}. Depth is treated separately: a finite depth on a matched row is labelled as a reference Quakes API value, a finite depth on an MPGV-only row is labelled as an unverified MPGV source value, and a missing or non-numeric depth is marked unavailable. This transformation is client-side presentation logic and does not modify the stored canonical record.
+
+Initial filter bounds combine the client catalogue and backend policy metadata. The earliest usable event supplies the initial start date, while the current date supplies the upper calendar bound. In parallel, the page requests \texttt{/insights/limits} for both \texttt{reference\_only} and \texttt{include\_unverified}. Those responses provide the magnitude limits and the depth limits eligible under each policy. The analytical interface is initialised only after both the earthquake data and the two limits responses are available; changing the depth-quality policy replaces the depth bounds with the corresponding policy-specific range.
+
+The filter component maintains a draft separate from the applied filter state. It supports inclusive start and end dates, minimum and maximum magnitude, minimum and maximum depth, source category, depth-quality policy, and day, week, month, or year time grouping. Numeric pairs are clamped to the available bounds, reversed minimum/maximum pairs are corrected at the edited boundary, and submission is rejected for invalid dates, negative or non-numeric values, ranges outside the catalogue bounds, or a minimum above its maximum. Reset restores the default full range with matched depths only.
+
+The implementation deliberately distinguishes event selection from depth eligibility. Date, magnitude, and category determine the catalogue rows used for event counts, magnitude summaries, exports, and result tables. The selected depth range and depth-quality policy then determine which of those rows contribute to depth averages, shallowest and deepest values, the depth histogram, and the magnitude--depth scatter plot. An event without an eligible depth therefore remains in non-depth analysis instead of disappearing from the catalogue summary.
+
+\subsubsection{Derived Summaries and Charts}
+
+Normalisation, filtering, depth selection, and aggregate construction are memoised so that they are recomputed when their declared inputs change rather than on every render. The summary area reports eight values from the applied selection: event count, strongest event, average magnitude, average eligible depth, shallowest and deepest eligible events, and the matched and MPGV-only counts with percentages. A separate depth-quality statement records the number of reference depths and the number of unverified depths included or excluded by policy. When unverified MPGV depths are enabled, the interface adds a visible warning rather than presenting them as equivalent to matched Quakes API depths.
+
+Five Recharts views are built from the same derived analysis. Magnitude distribution uses fixed 0.2-unit bins beginning at the catalogue threshold. Depth distribution uses adaptive bins and an overflow class for unusually large values, with reference and unverified depths separated when the latter are enabled. The magnitude--depth scatter plot retains the source category and depth provenance in its tooltip and uses a distinct symbol for unverified values. Average magnitude over time and event category over time use the selected day, week, month, or year grouping; empty periods inside the selected range are retained as zero-count buckets. The MPGV-only series in the category chart is displayed when the include-unverified policy is active. Both time charts provide a brush-controlled visible range and a reset action without changing the applied catalogue filters.
+
+\subsubsection{Results, Export, and Failure States}
+
+Below the charts, the page presents the ten most recent and ten strongest events from the applied catalogue selection. Each table displays five rows per page, can be sorted by date or magnitude, identifies matched and MPGV-only categories, labels the displayed source, and marks unverified depths. The View on map action uses the route coordination described above to restore the geographic context of the chosen record.
+
+The CSV export contains every event in the applied catalogue selection together with date-time, coordinates, depth, magnitude, category, source, depth source, and depth-quality fields. It also prepends the export time, active filters, selected depth policy, and a depth-quality summary. The PDF action invokes the browser print workflow and relies on the page's print stylesheet; it is therefore a print-oriented export rather than a separately generated server document. Both actions are disabled when the applied selection is empty.
+
+Loading and failure states are represented explicitly. A skeleton is shown until catalogue data, policy limits, and initial filters are ready. Catalogue and limits failures have separate retry paths, invalid filter input is exposed as an alert, and a valid filter combination with no matching events produces a no-results state instead of empty charts and tables. These states keep network failure, invalid input, and an empty analytical result distinguishable in the interface.
+
+Figure~\ref{fig:frontend-insights-current} shows the current Insights route at two interaction levels: the applied-filter and catalogue-summary view, followed by the first four chart panels visible within the captured viewport. The fifth implemented chart, event category over time, continues below that viewport.
+
+\begin{figure}[H]
+\centering
+\textbf{(a) Filters and catalogue summary}\par
+\includegraphics[width=0.94\linewidth]{Updated Screenshots/frontend-insights-filters.png}
+\vspace{0.35em}
+
+\textbf{(b) Analytical charts}\par
+\includegraphics[width=0.94\linewidth]{Updated Screenshots/frontend-insights-charts.png}
+\caption{Current Insights route: applied date, magnitude, depth, source-quality, and grouping controls with the catalogue and depth-quality summaries (a), and four of the five implemented chart panels visible in the captured viewport (b). The category-over-time chart and result tables continue below the capture.}
+\label{fig:frontend-insights-current}
+\end{figure}
 
 \subsection{Responsive and Accessibility Implementation}
 \label{subsec:frontend_responsive_accessibility}
@@ -1136,8 +1335,14 @@ The current frontend contains several mechanisms that limit repeated work, summa
 
 \begin{table}[H]
 \centering
+\caption{Code-demonstrable frontend mechanisms and their limitations in the current MapLibre/deck.gl architecture.}
+\label{tab:frontend-current-mechanisms}
 \small
-\begin{tabular}{p{3.6cm} p{5.0cm} p{5.0cm}}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{
+    >{\raggedright\arraybackslash}p{3.6cm}
+    >{\raggedright\arraybackslash}p{5.0cm}
+    >{\raggedright\arraybackslash}p{5.0cm}}
 \toprule
 \textbf{Area} & \textbf{Implemented mechanism} & \textbf{Boundary} \\
 \midrule
@@ -1150,8 +1355,6 @@ Grid generation & Geometry updates on movement and zoom completion & High zoom l
 Time interaction & Stable wheel-listener references and delayed filter callbacks & The custom interaction remains more complex than a native date input. \\
 \bottomrule
 \end{tabular}
-\caption{Code-demonstrable frontend mechanisms and their limitations in the current MapLibre/deck.gl architecture.}
-\label{tab:frontend-current-mechanisms}
 \end{table}
 
 The renderer boundary is deliberate but should not be overinterpreted. MapLibre and deck.gl share the WebGL-oriented map composition, while React continues to coordinate state and DOM-based controls. Filtering before deck-data construction reduces the records passed to the marker layers when the selected range is narrow. Cached style and WFS requests avoid repeated downloads during ordinary mode toggling, and cleanup effects remove observers, intervals, pending animation frames, and map-overlay attachments. The repository does not contain controlled measurements proving a particular performance threshold, and Chapter~6 therefore records mechanisms rather than outcomes.
@@ -1387,6 +1590,8 @@ The Flask application serves the JSON and CSV interfaces together with the built
 
 \begin{table}[H]
 \centering
+\caption{Summary of backend API endpoints.}
+\label{tab:api-endpoints}
 \footnotesize
 \setlength{\tabcolsep}{2pt}
 \renewcommand{\arraystretch}{1.08}
@@ -1407,8 +1612,6 @@ POST & \texttt{/scrape-volcanoes} & --- & Refreshes the volcano table under the 
 POST & \texttt{/initialize-data} & --- & Populates missing data for a fresh deployment under the ingestion lock; administrator access is required. \\
 \bottomrule
 \end{tabular}
-\caption{Summary of backend API endpoints.}
-\label{tab:api-endpoints}
 \end{table}
 
 \subsection*{Example: \texttt{/earthquakes} Response}
