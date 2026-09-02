@@ -191,7 +191,7 @@
 
         \vspace*{\stretch{0.25}}
         {\large\rmfamily Examiner\\}
-        ...\par
+        Kristín Vogfjörð\par
         
         \vspace*{\stretch{1.0}}
 
@@ -327,7 +327,7 @@ HTTPS & HyperText Transfer Protocol Secure \\
 IEB   & Interactive Earthquake Browser \\
 IMO   & Icelandic Meteorological Office (\textit{Veðurstofa Íslands}) \\
 JSON  & JavaScript Object Notation \\
-MPGV  & Primary IMO earthquake catalogue used to define the events presented by MPGV Monitor \\
+MPGV  & Magnitude-Peak-Ground-Velocity Primary IMO earthquake catalogue used to define the events presented by MPGV Monitor \\
 REST  & Representational State Transfer \\
 SISZ  & South Iceland Seismic Zone \\
 SQL   & Structured Query Language \\
@@ -360,7 +360,7 @@ I am grateful to my supervisor, Kristján Jónasson, for his guidance throughout
 
 I thank the Faculty of Industrial Engineering, Mechanical Engineering and Computer Science at the University of Iceland for providing the computing resources and access to the Pluto server used during development.
 
-Generative AI tools were used selectively during the preparation of this thesis to support language refinement, document organisation, and the review of code-related explanations. Their output was treated as drafting assistance rather than as evidence or an authoritative source. Technical statements were checked against the implemented project and cited material, and responsibility for the final text, analysis, and conclusions remains with me.
+Generative AI tools were used selectively as development and review aids during the software project and the preparation of this thesis. Anthropic Claude Sonnet 4.6 and Claude Opus 4.6 were used for selected documentation revisions and for assistance with parts of the frontend, performance, security, and earthquake-reconciliation work. OpenAI Codex was used during final repository review, verification, and submission preparation. AI-generated suggestions were reviewed, tested, and modified where necessary before being retained. These tools were not treated as evidence or authoritative academic sources. Responsibility for the system design, implementation decisions, analysis, evaluation, conclusions, and final submitted work remains with me.
 
 Finally, I thank my family and friends for their encouragement and support throughout this work.
 
@@ -636,19 +636,29 @@ Figure~\ref{fig:frontend-evolution} records the visible interface milestones; Ta
 
 \begin{figure}[p]
     \centering
+
     \textbf{(a) Folium}\par
-    \includegraphics[width=0.76\linewidth]{Updated Screenshots/Folium_Map_version.png}
+    \includegraphics[width=1.08\textwidth]{Updated Screenshots/Folium_Map_version.png}
     \vspace{0.25em}
 
     \textbf{(b) Google Maps}\par
-    \includegraphics[width=0.76\linewidth]{Updated Screenshots/google-maps-implementation.png}
-    \vspace{0.25em}
+    \includegraphics[width=1.08\textwidth]{Updated Screenshots/google-maps-implementation.png}
+
+\end{figure}
+
+\clearpage
+
+\begin{figure}[p]
+    \ContinuedFloat
+    \centering
 
     \textbf{(c) Leaflet}\par
-    \includegraphics[width=0.76\linewidth]{Updated Screenshots/leaflet-stage.png}
+    \includegraphics[width=1.08\textwidth]{Updated Screenshots/leaflet-stage.png}
+
     \caption[Frontend milestones preceding the final architecture: Folium, Google Maps, and Leaflet.]{Frontend milestones preceding the final architecture: (a) the Folium server-generated prototype established the initial geographic view; (b) the React/Google Maps implementation introduced a client-rendered interface with browser-side controls; and (c) Leaflet represented the intermediate non-Google client stage. The panels document interface milestones, while Table~\ref{tab:frontend-technology-decisions} presents the architectural analysis.}
     \label{fig:frontend-evolution}
 \end{figure}
+
 \clearpage
 
 \subsection{Data Sources and Selected Project Scope}
@@ -769,7 +779,13 @@ Figures~\ref{fig:mpgv-source-interface} and~\ref{fig:quakes-api-interface} recor
 \clearpage
 \begin{figure}[p]
 \centering
-\makebox[\textwidth][c]{\includegraphics[width=1.08\textwidth]{Updated Screenshots/hraun vedur mpgv data.png}}
+\makebox[\textwidth][c]{%
+    \includegraphics[
+        width=1.08\textwidth,
+        height=0.75\textheight,
+        keepaspectratio
+    ]{Updated Screenshots/hraun vedur mpgv data.png}%
+}
 \caption{MPGV archive table used by the HTML acquisition path. The source presents event measurements and related archive columns in a wide tabular interface. This capture documents the external interface appearance on 12~August~2026; the parser retains only the fields and rows described in Section~\ref{subsubsec:mpgv-acquisition}.}
 \label{fig:mpgv-source-interface}
 \end{figure}
