@@ -191,7 +191,7 @@
 
         \vspace*{\stretch{0.25}}
         {\large\rmfamily Examiner\\}
-        Kristín Vogfjörð°°\par
+        Kristín Vogfjörð\par
         
         \vspace*{\stretch{1.0}}
 
@@ -375,32 +375,41 @@ Finally, I thank my family and friends for their encouragement and support throu
 
 \section{Introduction}
 \label{sec:introduction}
-Seismicity in the Iceland region is monitored continuously, but the public interfaces through which it can be explored are mainly designed for recent-event awareness. The Icelandic Meteorological Office (IMO), for example, publishes a map of earthquakes detected during the previous 48 hours \cite{imo_quakes_48h}. Global services operated by the U.S. Geological Survey and the European-Mediterranean Seismological Centre provide broader geographical coverage \cite{usgs_latest_map,emsc_home}, while the IRIS Interactive Earthquake Browser supports longer-term catalogue exploration \cite{iris_ieb_app}. MPGV Monitor was conceived to provide a multi-year, Iceland-focused interface in which users could explore earthquakes by location, time, and magnitude through a map and connected analytical views. The MPGV archive provides a catalogue of larger earthquakes ($M_w \geq 3.0$ in this application), with improved moment-magnitude estimates and automatic event locations. Links to relevant Icelandic ShakeMap products and reconciliation with reviewed Quakes API locations support exploration of this catalogue.
+Seismicity in the Iceland region is monitored continuously, but the public interfaces through which it can be explored are mainly designed for recent-event awareness. The Icelandic Meteorological Office (IMO), for example, publishes a map of earthquakes detected during the previous 48 hours \cite{imo_quakes_48h}. Global services operated by the U.S. Geological Survey and the European-Mediterranean Seismological Centre provide broader geographical coverage \cite{usgs_latest_map,emsc_home}, while the IRIS Interactive Earthquake Browser supports longer-term catalogue exploration \cite{iris_ieb_app}. MPGV Monitor was conceived to provide a multi-year, Iceland-focused interface in which users could explore earthquakes by location, time, and magnitude through a map and connected analytical views. The MPGV archive provides a catalogue of larger earthquakes, with improved moment-magnitude estimates and automatic event locations. Links to relevant Icelandic ShakeMap products and reconciliation with reviewed Quakes API locations support exploration of this catalogue.
 
-\textbf{MPGV Monitor} was originally developed to make the MPGV earthquake catalogue accessible through that exploratory interface. The backend scrapes the MPGV archive and retrieves recent events from the IMO Quakes API, which provides complementary reviewed locations for events with improved MPGV moment-magnitude estimates. MPGV defines catalogue membership: the published catalogue contains qualifying MPGV events with $M_w \geq 3.0$ from 1~June~2020 onwards. Where a valid match exists, selected Quakes API fields enrich the MPGV-anchored event; unmatched Quakes API records do not independently enter the published catalogue.
+\textbf{MPGV Monitor} was originally developed to make the MPGV earthquake catalogue \cite{imo_mpgv_archive_index} accessible through that exploratory interface. The backend scrapes the MPGV archive and retrieves recent events from the IMO Quakes API \cite{imo_quakes_api}, which provides complementary reviewed locations for events with improved MPGV moment-magnitude estimates. MPGV defines catalogue membership: the published catalogue contains qualifying MPGV events with $M_w \geq 3.0$ from 1~June~2020 onwards. Where a valid match exists, selected Quakes API fields enrich the MPGV-anchored event; unmatched Quakes API records do not independently enter the published catalogue.
 
-The project has passed through several frontend implementations. The first prototype generated a static Folium map on the server, and a later version used the Google Maps JavaScript API. Google Maps provided a workable interactive prototype, but it introduced an API-key and billing dependency that was undesirable for an academic system intended for institutional deployment. Leaflet was subsequently used as an open-source replacement. In the final implementation described by this thesis, Leaflet has also been removed: MapLibre GL renders the map and its tile layers, while deck.gl renders the interactive earthquake markers. This separation allows the application to use the same WebGL-based map for vector, raster, and heatmap views, and avoids maintaining parallel mapping engines.
+The project has passed through several frontend implementations. The first prototype generated a static Folium map \cite{folium_docs} on the server, and a later version used the Google Maps JavaScript API \cite{google_maps_js_docs}. Google Maps provided a workable interactive prototype, but it introduced an API-key and billing dependency that was undesirable for an academic system intended for institutional deployment. Leaflet \cite{leaflet_docs} was subsequently used as an open-source replacement. In the final implementation described by this thesis, Leaflet has also been removed: MapLibre GL \cite{maplibre_gl_js_docs} renders the map and its tile layers, while deck.gl \cite{deck_gl_docs} renders the interactive earthquake markers. This separation allows the application to use the same WebGL-based map for vector, raster, and heatmap views, and avoids maintaining parallel mapping engines.
 
 This chapter introduces the motivation and scope of the work, states the problem addressed by the application, and summarises its principal contributions. Detailed discussion of the scientific context, data pipeline, backend, frontend, and deployment is left to the later chapters.
 
 \subsection*{Context and Motivation}
 Iceland lies on the Mid-Atlantic Ridge at the divergent boundary between the North American and Eurasian plates. The hotspot beneath the island broadens and complicates this plate-boundary zone \cite[p.~35]{Einarsson2008}. Earthquake activity in Iceland reflects both tectonic and volcanic processes and includes frequent low-magnitude events, concentrated swarms, and occasional larger earthquakes \cite[pp.~75--79]{Jakobsdottir2008}. This scientific background is considered in more detail in the following chapter; for the present work, its main consequence is that useful exploration must connect space and time while allowing events to be filtered and compared by magnitude. A short list of recent epicentres cannot show how a swarm developed over several months, how activity shifted between volcanic systems, or which stronger events occurred within the sequence.
 
-Recent unrest on the Reykjanes Peninsula made this limitation particularly visible during the development of the project. Large numbers of events may occur within a small region, and the significance of an individual earthquake depends partly on its relationship to the surrounding sequence. A map therefore needs temporal and magnitude filters, alternative visual encodings, and access to a catalogue long enough for comparison. The application is not intended to replace operational monitoring or support eruption prediction. Its purpose is narrower: to make the available catalogue easier to explore by location, time, and magnitude. Source provenance supports that exploration by showing how displayed records were constructed.
+Recent unrest on the Reykjanes Peninsula made this limitation particularly visible during the development of the project. Large numbers of events may occur within a small region, and the significance of an individual earthquake depends partly on its relationship to the surrounding sequence. A map therefore needs temporal and magnitude filters, alternative visual encodings, and access to a catalogue long enough for comparison. The application is not intended to replace operational monitoring or support eruption prediction. Its purpose is narrower: to make the available catalogue easier to explore by location, time, and magnitude.
 
-Data quality is part of this problem. MPGV and the Quakes API do not provide identical records, and a single physical event may appear in both with small differences in time, coordinates, magnitude, or depth. Publishing both feeds without a catalogue-defining source would create duplicates and could give a misleading impression of event density. Using MPGV alone would preserve the defining catalogue but forgo the coordinates and depth available from accepted Quakes API matches. The backend therefore treats reconciliation as a supporting stage before visualisation rather than attempting to hide source differences in the user interface.
+Reliable exploration also requires a consistent representation of each earthquake: differences between source records can otherwise distort event counts and spatial patterns. The reconciliation process supports this consistency by matching records before combining selected attributes. Combining MPGV moment magnitudes with the more accurate, reviewed Quakes API coordinates and depth for accepted matches is a form of data fusion, with source provenance retained so that the resulting event record remains traceable.
 
 \subsection*{Need for a Modern Monitoring Tool}
 MPGV Monitor was developed to support exploration of an Iceland-focused earthquake catalogue from 1~June~2020 onwards. The aim was to let users move between individual events on a map and summaries of a selected period, using location, time, and magnitude to examine the records.
 
-The two earthquake sources provide complementary information. MPGV provides improved moment-magnitude estimates for larger earthquakes, but its locations come from automatic processing. Reviewed records in the IMO Quakes API generally provide improved locations, while their magnitudes for larger events can be less reliable. The purpose of reconciliation is to combine the MPGV magnitudes with the reviewed Quakes API coordinates and depth where an acceptable match exists. MPGV remains the source that determines catalogue membership. The acquisition and reconciliation chapters explain how this policy is implemented.
+The tool brings complementary earthquake records together in a single interface. The following subsection summarises the characteristics of these sources; the acquisition and reconciliation chapters explain their processing in detail.
 
-The project also required a deployment that could be maintained as a single research application. SQLite simplified local setup and transfer, while scheduled acquisition kept the catalogue updated. These choices support the present deployment; their suitability for heavier use remains to be evaluated.
+The project also required a deployment that could be maintained as a single research application. SQLite simplified local setup and transfer, while scheduled acquisition kept the catalogue updated. These choices support the present deployment; their suitability for heavier use remains to be evaluated. In practice, new events appear after the next successful scheduled update rather than immediately, and substantially more simultaneous users or database writes would require performance testing and could require changes to the database or deployment architecture.
+
+\subsection*{Characteristics of the Data Sources}
+The project uses two earthquake sources with different strengths, together with services that provide geographic context and ground-motion products.
+
+\textbf{MPGV earthquake archive.} The IMO-hosted archive presents earthquake records in monthly HTML tables, including origin time, coordinates, depth, and moment-magnitude estimates \cite{imo_mpgv_archive_index}. Its principal contribution is improved magnitude estimation for larger earthquakes, using peak ground velocity measurements, while its event locations come from automatic SIL processing \cite{imo_mpgv_archive}. MPGV Monitor retains the robust-mean moment magnitude and uses qualifying MPGV records to define its published catalogue. The application's magnitude and date limits define its scope rather than the archive's full coverage.
+
+\textbf{IMO Quakes API.} This machine-readable source supplies event identifiers, origin times, coordinates, depth, and magnitude attributes \cite{imo_quakes_api}. Its reviewed locations are generally more accurate than the automatic locations associated with MPGV records, making it useful for improving the spatial description of matched events. However, review coverage and quality checking may be incomplete, and magnitudes for larger events can be less reliable, as discussed in Section~2.1.2.
+
+\textbf{Contextual data and ShakeMap products.} IMO/EPOS provides volcano metadata and access to Icelandic ShakeMap products \cite{imo_epos_api}, while EGDI/HIKE supplies fault and fissure linework \cite{egdi_hike_iceland_tectonics}. Volcano and tectonic layers help users interpret an earthquake's geographic setting; they do not contribute additional earthquake records. ShakeMap products describe estimated ground shaking for individual events and are linked only where an eligible product is available. These supporting sources add context without determining catalogue membership or replacing the earthquake measurements.
 
 \subsection*{System Features}
-The backend is a Flask application using SQLAlchemy for persistence. It exposes the merged earthquake catalogue, volcano records, catalogue limits for analysis, CSV export, health information, and on-demand ShakeMap lookup through a small REST interface. Normal ingestion is initiated by the scheduler; separate authenticated maintenance endpoints are available for controlled administrative use. The React 18 frontend is built with Vite and served from the same Flask deployment in production.
+The backend is a Flask application using SQLAlchemy for persistence. It exposes the merged earthquake catalogue, volcano records, catalogue limits for analysis, CSV export, health information, and on-demand ShakeMap lookup through a small REST interface. Normal ingestion is initiated by the scheduler; separate authenticated maintenance endpoints are available for controlled administrative use. The React 18 frontend is built with Vite and served from the same Flask deployment in production. A linked list of the software packages and tools used throughout the project is provided in Appendix~\ref{app:software-packages}.
 
-The main map uses MapLibre GL for the map view and deck.gl scatterplot layers for earthquake markers. Users can filter the displayed events by time and minimum magnitude, and can colour markers either by their position within the selected timeline or by magnitude. Four map modes are available: an OpenFreeMap vector map, Esri satellite imagery, an IMO terrain map, and a density-oriented heatmap over a dark OpenFreeMap style. The heatmap deliberately suppresses individual marker selection so that it represents spatial concentration rather than a second marker view. Optional overlays show IMO EPOS volcano metadata, EGDI/HIKE fault and fissure linework, and an Iceland-focused latitude/longitude grid. Selecting an earthquake opens an information card and, where an eligible product is available, provides access to the corresponding ShakeMap. Here, eligibility means that the product satisfies the application's lookup and matching criteria. A recent-selections panel allows previously inspected events to be reopened.
+The React frontend presents the main map using MapLibre GL for the map view and deck.gl scatterplot layers for earthquake markers. Users can filter the displayed events by time and minimum magnitude, and can colour markers either by their position within the selected timeline or by magnitude. Four map modes are available: an OpenFreeMap vector map, Esri satellite imagery, an IMO terrain map, and a density-oriented heatmap over a dark OpenFreeMap style. The heatmap deliberately suppresses individual marker selection so that it represents spatial concentration rather than a second marker view. Optional overlays show IMO EPOS volcano metadata, EGDI/HIKE fault and fissure linework, and an Iceland-focused latitude/longitude grid. Selecting an earthquake opens an information card and, where an eligible product is available, provides access to the corresponding ShakeMap. Here, eligibility means that the product satisfies the application's lookup and matching criteria. A recent-selections panel allows previously inspected events to be reopened.
 
 The map is complemented by an Insights page built with Recharts. It applies date, magnitude, depth-quality, data-category, and time-grouping filters to the same merged catalogue and presents summary statistics, five interactive charts, and tables of recent and strongest events. Filtered results can be exported as CSV or prepared for printing to PDF, and a \emph{View on Map} action returns an event to the map while preserving the current map state. Both pages use responsive layouts; mobile presentation changes the arrangement of controls, tables, and information panels rather than providing a separate application.
 
@@ -409,7 +418,7 @@ These features are intended to support exploratory use rather than automated sci
 \subsection*{Contributions and Future Directions}
 The project makes three contributions. First, it provides an interactive map for exploring a multi-year Icelandic earthquake catalogue by location, time, and magnitude. Second, it implements an MPGV-anchored reconciliation pipeline that combines MPGV magnitude estimates with coordinates and depth from accepted Quakes API matches, while retaining source identities, match status, and diagnostics. Third, it connects the map to an Insights page that uses the same catalogue and depth-quality policy for summaries, charts, tables, and export.
 
-The development also documents the transition from Folium through Google Maps and Leaflet to MapLibre GL and deck.gl. This history explains the technology choices behind the final interface and the removal of the Google Maps API-key and billing dependency.
+Section~\ref{subsec:development-evolution} explains the technology decisions behind the final interface.
 
 The remaining work is primarily evaluation and operational improvement. The reconciliation thresholds need independent assessment, the interface needs usability and accessibility testing, and the deployment needs stronger monitoring and recovery procedures. Chapter~\ref{sec:future-development} develops these priorities, including source comparison, revision history, and comparison of selected periods.
 
@@ -435,7 +444,7 @@ This thesis does not infer physical causes from patterns displayed in the applic
 
 A physical earthquake and a catalogue record are not identical: a record is one source's estimated description of the event. Independent catalogues can assign different origin times, locations, and magnitude values to the same earthquake, and some events present in source data may be absent from a final catalogue \cite[p.~2202]{Jonasson2021}. Differences can arise from network and processing conditions, location methods, magnitude types, and the criteria used to select and merge records \cite[p.~2599]{Poggi2024}.
 
-Harmonised catalogues consequently require explicit selection policies. In the Icelandic catalogue of J\'onasson et al., the preferred location was chosen from available sources rather than by a universal first-choice rule, and the source was recorded in the catalogue \cite[p.~2203]{Jonasson2021}. Magnitudes were likewise selected or derived under documented rules with associated uncertainty estimates \cite[pp.~2204--2207]{Jonasson2021}. Although that study concerns a curated catalogue over a much longer period than MPGV Monitor, it establishes the relevance of source selection, uncertainty, and traceability to Icelandic catalogue integration.
+Harmonised catalogues consequently require explicit selection policies. In the Icelandic catalogue of J\'onasson et al., location selection depended on the period and available evidence. For 1955--1990, published research locations were adopted where available; for the remaining events, the authors compared locations from the Ambraseys--Sigbj\"ornsson catalogue, IMO, the International Seismological Centre (ISC), and local reports or bulletins, selecting the most credible estimate for each event or using an average or relocation. For 1991--2019, IMO SIL locations were generally preferred within $63$--$67^{\circ}$~N and $13$--$25^{\circ}$~W because they were judged more accurate than locations derived from distant stations. The selected location source was recorded in the catalogue \cite[p.~2203, Sections~3.1--3.2]{Jonasson2021}. Magnitudes were likewise selected or derived under documented rules with associated uncertainty estimates \cite[pp.~2204--2207]{Jonasson2021}. Although that study concerns a curated catalogue over a much longer period than MPGV Monitor, it establishes the relevance of source selection, uncertainty, and traceability to Icelandic catalogue integration.
 
 In February 2026, IMO made SeisComP its primary earthquake monitoring and analysis system while retaining the former SIL system as a secondary system during fine-tuning and historical-data transfer. The same institutional notice introduced an updated Skj\'alftal\'isa web interface and the Quakes API data gateway. It also stated that earthquake locations could change because of differences in processing methods and that the number of reviewed earthquakes might initially be lower during the transition \cite{imo_seiscomp_2026}.
 
@@ -443,7 +452,7 @@ The Quakes API provides access to manually reviewed earthquake records from SIL 
 
 The other principal project source is the IMO-hosted MPGV archive. Its monthly pages provide origin time, position, depth, and magnitude from the automatic SIL system, together with robust-mean and median moment-magnitude estimates, station counts, and fit information. These moment-magnitude estimates result from combining SIL event locations with real-time peak ground velocity (PGV) measurements from a separate automatic IMO Alert system. Qualifying SIL events are compared with Alert-system events, and magnitude is recalculated from station PGV measurements when the correspondence rule is satisfied \cite{imo_mpgv_archive}. The archive also provides links to input data and products generated with USGS ShakeMap software for events with $M \geq 3.5$. The improved magnitude estimates motivate its use alongside reviewed Quakes API locations; they do not establish that MPGV is complete or superior in every recorded parameter.
 
-MPGV Monitor selects records from 1~June~2020 onwards and applies the catalogue magnitude threshold defined in Section~\ref{subsec:data-sources-scope}. These are project-scope decisions, not statements about the full coverage of either source. Because the selected MPGV and Quakes API data overlap only partly and corresponding records can differ, simple concatenation could duplicate an earthquake. The project instead compares records, retains an MPGV-anchored result, and distinguishes accepted matches from MPGV-only records. The implemented thresholds, field choices, and diagnostics are documented in Section~\ref{subsec:reconcile}.
+MPGV Monitor selects records from 1~June~2020 onwards and applies the catalogue magnitude threshold defined in Section~\ref{subsec:data-sources-scope}. These are project-scope decisions, not statements about the full coverage of either source. Because the selected MPGV and Quakes API data overlap only partly and corresponding records can differ, simple concatenation could duplicate earthquakes. The project instead compares records, retains an MPGV-anchored result, and distinguishes accepted matches from MPGV-only records. The implemented thresholds, field choices, and diagnostics are documented in Section~\ref{subsec:reconcile}.
 
 \subsection{Interactive Geospatial Visualisation}
 
@@ -513,7 +522,7 @@ The comparison shows that operational interfaces serve different purposes: curre
 
 \subsubsection{Research Systems and Empirical Studies}
 
-Together, the studies suggest that an earthquake-catalogue interface should coordinate spatial, temporal, and event-level exploration while selecting representations according to the retrieval task \cite[pp.~1413--1415]{Yuan2010}\cite[pp.~156, 160--161]{PodorKiszely2014}. For MPGV Monitor, this provides a design rationale for linked filtering and complementary event and density views, not evidence that the implemented interface is effective.
+Several studies suggest that an earthquake-catalogue interface should coordinate spatial, temporal, and event-level exploration while selecting representations according to the retrieval task \cite[pp.~1413--1415]{Yuan2010}\cite[pp.~156, 160--161]{PodorKiszely2014}. For MPGV Monitor, this provides a design rationale for linked filtering and complementary event and density views, not evidence that the implemented interface is effective.
 
 Sumy et al. also provide an empirical evaluation of the IEB. Their 2018 pop-up survey yielded 495 usable responses after exclusions \cite[pp.~2925--2926]{Sumy2020}. In the feature analysis, data mapping and visualisation, detailed information, and data customisation and filtering were the three most frequent codes \cite[pp.~2929--2931]{Sumy2020}. Because the authors identify English-language, self-selection, and membership biases \cite[p.~2932]{Sumy2020}, the results motivate MPGV Monitor's map, exact details, and filters but do not establish the usability of this project.
 
@@ -521,7 +530,7 @@ The research literature therefore supports linked spatial and temporal explorati
 
 \subsubsection{Comparative Synthesis}
 
-Among the systems reviewed, long time ranges, multi-source collection, filtering, export, analytical views, and ground-motion products already exist in different combinations. ComCat is explicitly multi-network, IEB offers historical mixed-source exploration, and the current IMO environment includes an analytical Skj\'alftal\'isa interface. MPGV Monitor is therefore not positioned by claiming that these capabilities are individually novel. Its selected source combination also brings improved MPGV moment-magnitude estimates to larger earthquakes whose reviewed locations are available through the Quakes API.
+Among the systems reviewed (see above), long time ranges, multi-source collection, filtering, export, analytical views, and ground-motion products already exist in different combinations. ComCat is explicitly multi-network, IEB offers historical mixed-source exploration, and the current IMO environment includes an analytical Skj\'alftal\'isa interface. MPGV Monitor is therefore not positioned by claiming that these capabilities are individually novel. Its selected source combination also brings improved MPGV moment-magnitude estimates to larger earthquakes whose reviewed locations are available through the Quakes API.
 
 The narrower gap concerns the source relationship examined here. The reviewed official interfaces do not document an exploratory view of accepted matches and unmatched MPGV records between the IMO-hosted MPGV archive and current Quakes API, nor the same MPGV-anchored catalogue used across a map and an Insights page. This is a finding within the reviewed sample and access date, not proof that no comparable application exists.
 
@@ -555,7 +564,6 @@ The next chapter turns from this evidence base to the project itself. It describ
 \section{Project Overview}
 \label{sec:project-overview}
 
-\subsection{Chapter Scope}
 \label{subsec:project-overview-scope}
 
 This chapter defines the project requirements, explains the main technology decisions, and describes the roles of the selected data sources. It then presents the system architecture. Chapters~4--6 explain acquisition, backend processing, and frontend implementation in detail.
@@ -563,7 +571,7 @@ This chapter defines the project requirements, explains the main technology deci
 \subsection{Project Objectives and Requirements}
 \label{subsec:project-objectives}
 
-The original project objective is to make the MPGV earthquake catalogue accessible through an interactive map and connected analytical views for exploration by location, time, and magnitude. A traceable, multi-year, MPGV-anchored catalogue supports that objective, with Quakes API reconciliation added during development as a matching and enrichment process. The requirements in Table~\ref{tab:project-requirements} state the observable functions and quality or operational constraints used to realise the current system. They also distinguish implementation evidence from matters that still require evaluation or deployment-level verification.
+The original project objectives are to make the MPGV earthquake catalogue accessible through an interactive map and connected analytical views for exploration by location, time, and magnitude. A traceable, multi-year, MPGV-anchored catalogue supports these objectives, with Quakes API reconciliation added during development as a matching and enrichment process. The requirements in Table~\ref{tab:project-requirements} state the observable functions and quality or operational constraints used to realise the current system. They also distinguish implementation evidence from matters that still require evaluation or deployment-level verification.
 
 \begin{table}[H]
 \centering
@@ -602,11 +610,11 @@ These requirements describe a research application, not an operational earthquak
 \subsection{Development Evolution and Technology Decisions}
 \label{subsec:development-evolution}
 
-The development history is relevant only where it explains the current architecture. Table~\ref{tab:frontend-technology-decisions} therefore compares four stages by rendering model, contribution, limitation, and relationship to the final system rather than presenting a feature-by-feature chronology.
+Table~\ref{tab:frontend-technology-decisions} compares the mapping frameworks and supporting libraries used during development to explain why the final frontend architecture was selected. It highlights the advantages and limitations of each approach in relation to interactive exploration, deployment requirements, and maintenance, and shows how these trade-offs motivated each replacement. The comparison is based on their use in this project; it is not a controlled performance benchmark.
 
 \begin{table}[H]
 \centering
-\caption{Technology decisions leading to the current frontend architecture.}
+\caption[Comparison of frontend frameworks and their advantages and limitations.]{Comparison of frontend frameworks and their advantages and limitations for MPGV Monitor. The comparison explains the reasons for replacing earlier approaches and selecting the final architecture.}
 \label{tab:frontend-technology-decisions}
 \footnotesize
 \setlength{\tabcolsep}{2pt}
@@ -617,17 +625,21 @@ The development history is relevant only where it explains the current architect
     >{\raggedright\arraybackslash}p{4.8cm}
     >{\raggedright\arraybackslash}p{5.0cm}}
 \toprule
-\textbf{Stage} & \textbf{Rendering model} & \textbf{Main contribution and final relevance} & \textbf{Important limitation and reason superseded} \\
+\textbf{Framework / libraries} & \textbf{Rendering approach} & \textbf{Advantages for this project} & \textbf{Limitations and decision} \\
 \midrule
 Folium prototype & Flask-generated Folium map delivered from the server & Established the feasibility of mapping MPGV records and the initial national view. It demonstrated the core map concept but is not part of the final runtime. & Application-level interaction was limited compared with later client-rendered versions. A React client was adopted to separate interactive presentation from server-generated map output. \\
-Google Maps & React/Vite client using Google Maps, with Flask supplying data & Established browser-side controls and frontend/backend separation. The client/API division remains in the final system. & Google credentials and associated service configuration conflicted with the deployment objective. A non-Google client-rendered stage was adopted. \\
-Leaflet & React-Leaflet/Leaflet with non-Google basemaps & Removed the Google Maps dependency and extended the interactive interface. It provided the intermediate open-mapping stage. & It became part of an intermediate plugin and compatibility architecture. The final implementation removed that layer; no Leaflet dependency remains. \\
-MapLibre GL, deck.gl, and Recharts & React/Vite with dedicated map, earthquake-layer, and chart renderers & Provides the current map architecture and connected analytical interface. It is the frontend architecture described by the remainder of this thesis. & Not superseded. Its constraints concern external services, licensing, accessibility, SQLite, and externally managed deployment infrastructure rather than a demonstrated renderer failure. \\
+Google Maps & React/Vite client using Google Maps, with Flask supplying data & Established browser-side controls and frontend/backend separation. The client/API division remains in the final system. & Google Maps required a billing account with a payment method, creating a setup barrier for this project. Leaflet was adopted to remove that billing and API-key dependency. \\
+Leaflet & React-Leaflet/Leaflet with non-Google basemaps & Removed the Google Maps dependency and extended the interactive interface. It provided the intermediate open-mapping stage. & Replaced to simplify the plugin and compatibility architecture and use MapLibre GL with deck.gl for the map and earthquake layers. No Leaflet dependency remains. \\
+MapLibre GL, deck.gl, and Recharts & React/Vite with dedicated map, earthquake-layer, and chart renderers & Provides the current map architecture and connected analytical interface. It is the frontend architecture described by the remainder of this thesis. & Selected for the final system. Requires coordination between separate map, earthquake-layer, and chart libraries, while basemap availability and licensing remain dependent on external providers. \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The Folium prototype established the initial geographic view, while the Google Maps version marked the move to a browser-rendered React interface supplied by Flask. Removing the Google credential and service-configuration dependency motivated the non-Google Leaflet stage. Leaflet was not rejected as inherently incapable or inefficient; it was an intermediate architecture that was later replaced together with its compatibility elements. In the current frontend, MapLibre GL renders vector and raster maps and the density heatmap, deck.gl renders interactive earthquake layers, and Recharts supports the Insights view.
+The Folium prototype established the initial geographic view, but its server-generated map structure became restrictive as the interface needed coordinated filters, event selection, and analytical views. Moving to a React client with Google Maps made it easier to manage these interactions in the browser while Flask supplied the earthquake data.
+
+Google Maps was subsequently replaced because its setup required a billing account with a payment method. This requirement created a practical barrier for the project and introduced an ongoing dependency on Google credentials and billing configuration. Leaflet provided an open-source alternative that allowed development to continue without the Google Maps billing requirement.
+
+Leaflet was later replaced to simplify the intermediate plugin and compatibility architecture and bring the map modes into a common WebGL-based implementation. In the final frontend, MapLibre GL handles vector and raster basemaps and the density heatmap, while deck.gl renders the interactive earthquake layers. This separation gives each renderer a clear role and avoids maintaining parallel mapping engines; Recharts supplies the connected Insights charts. The replacement reflects the architectural needs of this project and does not establish that Leaflet is inherently incapable or slower.
 
 Figure~\ref{fig:frontend-evolution} records the visible interface milestones; Table~\ref{tab:frontend-technology-decisions} provides the architectural comparison. The screenshots establish that the stages existed, not their performance or usability.
 
@@ -664,7 +676,7 @@ Figure~\ref{fig:frontend-evolution} records the visible interface milestones; Ta
 
 \subsubsection{Earthquake Catalogue Sources}
 
-The IMO-hosted MPGV archive defines the events in the final published catalogue. Its monthly pages provide origin time, position, depth, and documented magnitude fields, including the robust-mean moment-magnitude value retained by MPGV Monitor \cite{imo_mpgv_archive_index}. The IMO Quakes API supplies a secondary, machine-readable stream of event identifiers and earthquake attributes for matching and enrichment \cite{imo_quakes_api}. The two streams partially overlap, but Quakes API records do not independently enter the published catalogue.
+The IMO-hosted MPGV archive defines the events in the final published catalogue. Its monthly pages provide origin time, position, depth, and documented magnitude fields, including the robust-mean moment-magnitude value retained by MPGV Monitor \cite{imo_mpgv_archive_index}. The IMO Quakes API supplies a secondary, machine-readable stream of event identifiers and earthquake attributes for matching and enrichment \cite{imo_quakes_api}. The two streams partially overlap, but Quakes API records do not independently enter the MPGV-anchored earthquake catalogue published by MPGV Monitor.
 
 Source records are retained separately before reconciliation because their reported time, position, depth, and magnitude may differ. Candidate comparison determines whether two records plausibly represent the same physical event; simple concatenation could instead publish overlapping source records as independent catalogue events. The resulting catalogue is MPGV-anchored and preserves match status and field provenance. In this thesis, \emph{canonical catalogue} denotes this persisted reconciliation output; \emph{merged catalogue} refers to the same output when describing its construction or database table. Detailed acquisition and reconciliation methods are deferred to Chapters~4 and~5.
 
@@ -678,7 +690,7 @@ These sources have different semantics from the reconciled earthquake records. V
 
 For the published MPGV-anchored catalogue, \(M_w\) denotes the MPGV robust-mean moment-magnitude field. The catalogue applies \(M_w \geq 3.0\). Generic ``magnitude'' or \(M\) is used when comparing sources because the available evidence does not establish that every raw Quakes API magnitude has the same type.
 
-The catalogue begins on 1~June~2020 as a deliberate project boundary supporting a consistent multi-year application scope. It should not be interpreted as the start of the source archives or as evidence of complete institutional coverage from that date. Events before the boundary and MPGV catalogue events with \(M_w < 3.0\) are outside the presented dataset; apparent frequencies and spatial or temporal patterns are consequently conditional on both selections.
+The catalogue begins on 1~June~2020 as a deliberate project boundary supporting a consistent multi-year application scope. It should not be interpreted as the start of the source archives or as evidence of complete institutional coverage from that date. Events before the boundary and MPGV catalogue events below the magnitude threshold are outside the presented dataset; apparent frequencies and spatial or temporal patterns are consequently conditional on both selections.
 
 Published merged rows are either matched records or MPGV-only records. A match retains the MPGV time and magnitude while using the accepted Quakes API coordinates and depth; an MPGV-only row retains the MPGV values and its unmatched status. Quakes API rows without an accepted match remain available as raw source records but are not independently published as catalogue events. Contextual layers are excluded from catalogue totals, and ShakeMap coverage is event-dependent. These rules define an application dataset rather than a catalogue-completeness analysis, and the interface must not be used as an earthquake forecast or operational warning service.
 
@@ -702,7 +714,7 @@ The current architecture can be read at five levels: external sources, acquisiti
 
 A scheduled backend workflow runs every three minutes. It acquires MPGV and recent IMO Quakes API records as separate streams, after which candidate records are compared using temporal, spatial, and magnitude criteria. Chapter~4 describes acquisition, parsing, and normalisation; Chapter~5 describes the reconciliation mechanics and decision constants.
 
-The output is an MPGV-anchored merged catalogue. Each published record is either matched to one acceptable Quakes API record or remains MPGV-only. Matched records retain MPGV time and \(M_w\), while coordinates and depth come from the accepted Quakes API record. The retained status and supporting fields make this selection policy traceable. They do not demonstrate that the merged value is scientifically more accurate than either source estimate.
+The resulting catalogue follows the source-selection policy defined in Section~\ref{subsec:data-sources-scope}; the backend retains the match status and supporting fields for each record.
 
 \subsubsection{Storage and Backend Delivery}
 
@@ -731,7 +743,6 @@ The resulting design separates source acquisition, catalogue reconciliation, and
 \section{Data Acquisition and Preparation}
 \label{sec:data-acquisition-preparation}
 
-\subsection{Chapter Scope}
 \label{subsec:acquisition-scope}
 
 This chapter explains how the backend retrieves records from the MPGV HTML archive and the IMO Quakes API, checks and normalises their fields, and stores them before reconciliation. The source roles were introduced in Section~\ref{subsec:data-sources-scope}; the matching rules are described in Chapter~5. The acquisition checks described here concern the preparation of source records, not independent validation of their scientific accuracy.
@@ -800,7 +811,7 @@ Figures~\ref{fig:mpgv-source-interface} and~\ref{fig:quakes-api-interface} recor
 The recurring workflow runs every three minutes and performs the following sequence:
 
 \begin{enumerate}
-    \item discover and parse all MPGV pages, build and validate the complete $M_w \geq 3.0$ candidate catalogue, and transactionally synchronise current source identities while retaining historical revisions;
+    \item discover and parse all MPGV pages, build and validate the complete candidate catalogue within the magnitude scope, and transactionally synchronise current source identities while retaining historical revisions;
     \item retrieve the most recent seven days from the IMO Quakes API and insert or update raw source records by event identifier, or use already stored Quakes API rows if the refresh fails;
     \item rebuild the selected range of the persisted canonical catalogue from eligible current MPGV rows and available Quakes API enrichment, and verify the current-to-canonical invariant;
     \item refresh volcano metadata; and
@@ -834,7 +845,7 @@ The acquisition workflow stores records from the MPGV archive and the IMO Quakes
 
 \section{Backend Development}
 
-The backend constructs and delivers the MPGV-anchored catalogue described in Chapters~3 and~4. Flask and SQLAlchemy provide the application and persistence layers, SQLite stores source and derived records, and APScheduler coordinates recurring acquisition and reconstruction when background services are enabled. The backend also supplies the Map and Insights interfaces with catalogue data, volcano metadata, analysis limits, exports, health information, and event-level ShakeMap lookup. This chapter focuses on persistence, scheduling safeguards, reconciliation, and service delivery; the source-specific acquisition procedures are covered in Chapter~4.
+The backend constructs and delivers the MPGV-anchored catalogue described in Chapters~3 and~4. Flask and SQLAlchemy provide the application and persistence layers, SQLite stores source and derived records, and APScheduler coordinates recurring acquisition and reconstruction when background services are enabled. The backend also supplies the Map and Insights interfaces with catalogue data, volcano metadata, analysis limits, exports, health information, and event-level ShakeMap lookup. This chapter focuses on persistence, scheduling safeguards, reconciliation, and service delivery; the source-specific acquisition procedures are covered in Chapter~4. Official links and the roles of the backend packages are collected in Appendix~\ref{app:software-packages}.
 
 Figure~\ref{fig:system-architecture} presents the active backend path. It distinguishes the scheduled catalogue workflow from the on-demand ShakeMap request used by the frontend. The separate batch ShakeMap utility is described later as an offline maintenance path rather than part of scheduled catalogue construction.
 
@@ -879,13 +890,13 @@ The \texttt{Volcano} model stores name, description, elevation fields, coordinat
 
 Chapter~4 describes the acquisition, parsing, normalisation, validation, and source-specific persistence procedures in detail. At the backend-architecture level, \texttt{scrape.py} constructs and validates the complete MPGV candidate before synchronising current source identities, while \texttt{skjalftalisa\_client.py} retrieves the recent Quakes API window with an HTTP \texttt{GET} request to \url{https://api.vedur.is/quakes/events}. The Quakes response is GeoJSON; usable \texttt{Point} features are normalised and inserted or updated by \texttt{event\_id}. The earlier POST and column-array interface is not part of the current implementation.
 
-The scheduled workflow requests the latest seven days of Quakes records at the generic threshold $M \geq 3.0$. A longer historical helper divides the requested period into intervals of at most 365~days, but those intervals are client-side request windows rather than server pagination. MPGV acquisition continues to build the complete candidate from the discovered archive hierarchy before changing current flags.
+The scheduled workflow requests the latest seven days of Quakes records using the API magnitude threshold described in Chapter~4. A longer historical helper divides the requested period into intervals of at most 365~days, but those intervals are client-side request windows rather than server pagination. MPGV acquisition continues to build the complete candidate from the discovered archive hierarchy before changing current flags.
 
 The same scheduled cycle calls \texttt{volcano\_scraper.py} after successful canonical replacement and invariant verification. The volcano client obtains and normalises IMO/EPOS metadata and replaces the local contextual table only when the result passes its checks. A failure is logged but is non-fatal to the already completed canonical catalogue update.
 
 \subsection{Automated Scheduling and Safeguards}
 
-Background processing is coordinated by an APScheduler \texttt{BackgroundScheduler}. Unless disabled through configuration, Flask attempts to start the service on the first request; direct execution also starts it before the development server. The interval job runs every three minutes with \texttt{coalesce=True}, \texttt{misfire\_grace\_time=300}, and \texttt{max\_instances=1}. Coalescing prevents accumulated missed intervals from being replayed as a burst, the grace period bounds delayed execution, and \texttt{max\_instances=1} prevents overlap within the elected scheduler instance.
+Background processing is coordinated by an APScheduler \texttt{BackgroundScheduler}. Unless disabled through configuration, Flask attempts to start the service on the first request; direct execution also starts it before the development server. The interval job runs every three minutes with \texttt{coalesce=True}, \texttt{misfire\_grace\_time=300}, and \texttt{max\_instances=1}. This interval is measured between scheduled start times, not as a three-minute pause after completion. The time spent fetching and processing data is the job's activity time; any remaining time before the next scheduled start is idle time. For example, a 40-second run leaves approximately 140 seconds idle before the next scheduled run. Coalescing prevents accumulated missed intervals from being replayed as a burst, the grace period bounds delayed execution, and \texttt{max\_instances=1} prevents overlap within the elected scheduler instance.
 
 Protection against overlap across application processes requires additional controls. A process-lifetime file lock elects one scheduler owner. Every scheduled or manually triggered ingestion operation must also acquire a non-blocking in-process thread lock and an exclusive ingestion lock file. The file records the owner process identifier and can be recovered when that process is no longer alive. Consequently, \texttt{max\_instances=1} is only one layer of the exclusion policy rather than a cross-process guarantee by itself.
 
@@ -916,7 +927,7 @@ Reconciliation constructs an MPGV-anchored catalogue from current MPGV rows and 
 |\Delta M| < 3.0.
 \]
 
-The stored Quakes rows are indexed by whole-second timestamp. For each current MPGV row, including those whose source timestamp contains fractional seconds, the algorithm inspects the five whole-second buckets from two seconds before to two seconds after the MPGV timestamp. A pair becomes a candidate only when it satisfies all three inequalities. When the stored Quakes magnitude is absent, the implementation substitutes the MPGV magnitude for this comparison, so missing magnitude alone does not reject a temporally and spatially eligible pair. The thresholds define current application behaviour; their suitability for physical event identification requires separate empirical evaluation.
+The stored Quakes rows are indexed by whole-second timestamp. For each current MPGV row, including those whose source timestamp contains fractional seconds, the algorithm inspects the five whole-second buckets from two seconds before to two seconds after the MPGV timestamp. A pair becomes a candidate only when it satisfies all three inequalities. When the stored Quakes magnitude is absent, the implementation substitutes the MPGV magnitude for this comparison, so missing magnitude alone does not reject a temporally and spatially eligible pair. These thresholds are project-specific parameters, not universally defined standards for earthquake matching. They are intended to retain as many plausible matches as possible while the combined proximity checks and ambiguity rules provide a conservative safeguard against incorrect associations. This is a practical design choice rather than a guarantee of matching accuracy; the suitability of the values for identifying the same physical earthquake requires separate empirical evaluation.
 
 Allocation then proceeds in two stages. First, for every Quakes \texttt{event\_id}, the algorithm selects the MPGV candidate with the lexicographically smallest tuple
 
@@ -924,9 +935,9 @@ Allocation then proceeds in two stages. First, for every Quakes \texttt{event\_i
 (|\Delta t|,\; \Delta d,\; |\Delta M|,\; \text{MPGV database identifier}).
 \]
 
-This comparison resolves competition when more than one MPGV row is eligible for the same Quakes event. Second, the winning MPGV row is accepted as \texttt{matched} only if that MPGV row has exactly one candidate under the implemented ambiguity rule. An MPGV row with no candidate, more than one candidate, or a unique candidate won by another MPGV row remains \texttt{v\_only}. The final integrity checks ensure that no Quakes event identifier is assigned to more than one canonical row.
+Here, lexicographic comparison means comparing the tuple entries in order: the smallest absolute time difference takes priority; ties are broken by the smallest distance, then the smallest absolute magnitude difference, and finally the smallest MPGV database identifier. A later entry is considered only when all preceding entries are equal. This comparison resolves competition when more than one MPGV row is eligible for the same Quakes event. Second, the winning MPGV row is accepted as \texttt{matched} only if that MPGV row has exactly one candidate under the implemented ambiguity rule. An MPGV row with no candidate, more than one candidate, or a unique candidate won by another MPGV row remains \texttt{v\_only}. The final integrity checks ensure that no Quakes event identifier is assigned to more than one canonical row.
 
-Listing~\ref{lst:reconcile-allocation} shows the compact allocation step that enforces those two stages in the current backend.
+Listing~\ref{lst:reconcile-allocation} shows the compact allocation step that enforces those two stages in the current backend. In the listing, \texttt{score} is the ordered tuple defined above, constructed in the code as \texttt{(dt\_abs, dist, dm, v.id or 0)}. It is not a single numerical or weighted score: Python compares tuples lexicographically, so \texttt{score < current[0]} applies the time, distance, magnitude, and identifier priorities in that order.
 
 \begin{codelisting}[H]
 \centering
@@ -980,7 +991,7 @@ Flask serves both the backend interfaces and the built React application. Table~
 \toprule
 \textbf{Route} & \textbf{Response} & \textbf{Purpose and principal controls} \\
 \midrule
-\texttt{GET /earthquakes} & JSON & Returns the canonical catalogue at $M_w \geq 3.0$, optionally limited by \texttt{days}. The unparameterised response uses a 60-second in-memory cache; parameterised requests bypass it. Date windows and total rows are bounded. \\
+\texttt{GET /earthquakes} & JSON & Returns the canonical catalogue, optionally limited by \texttt{days}. The unparameterised response uses a 60-second in-memory cache; parameterised requests bypass it. Date windows and total rows are bounded. \\
 \texttt{GET /insights/limits} & JSON & Returns catalogue magnitude limits and depth limits for either \texttt{reference\_only} or \texttt{include\_unverified}. Unsupported parameters and policies are rejected. \\
 \texttt{GET /earthquakes\_csv} & CSV & Exports the canonical catalogue with an optional bounded day window and a separate maximum-row limit. \\
 \texttt{GET /volcanoes} & JSON & Returns the contextual volcano table for the map overlay. \\
@@ -1028,7 +1039,7 @@ Chapter~6 describes current frontend responsibilities and component interaction.
 \subsection{Current Frontend Scope and Technology Stack}
 \label{subsec:frontend_scope}
 
-The Vite application mounts from \texttt{main.jsx} inside React's \texttt{StrictMode} and a language provider. \texttt{App.jsx} owns shared route and map state, while focused components implement the controls, map, modal panels, and analytical page. The principal runtime packages are React, MapLibre~GL, \texttt{react-map-gl}, deck.gl, Axios, and Recharts. No Leaflet, React-Leaflet, or \texttt{leaflet.heat} compatibility package is installed.
+The Vite application mounts from \texttt{main.jsx} inside React's \texttt{StrictMode} and a language provider. \texttt{App.jsx} owns shared route and map state, while focused components implement the controls, map, modal panels, and analytical page. The principal runtime packages are React, MapLibre~GL, \texttt{react-map-gl}, deck.gl, Axios, and Recharts. Appendix~\ref{app:software-packages} lists their official links alongside the build and testing tools. No Leaflet, React-Leaflet, or \texttt{leaflet.heat} compatibility package is installed.
 
 The map-first route provides four map modes, client-side time and magnitude filtering, two marker-colour encodings, contextual overlays, event inspection, recent selections, bilingual labels, and navigation to Insights. The interface is responsive rather than desktop-only: the same state is presented through different panel arrangements below the mobile breakpoint. Figure~\ref{fig:frontend-current-architecture} summarises the current component and rendering boundaries.
 
@@ -1303,7 +1314,7 @@ Initial filter bounds combine the client catalogue and backend policy metadata. 
 
 The filter component maintains a draft separate from the applied filter state. It supports inclusive start and end dates, minimum and maximum magnitude, minimum and maximum depth, source category, depth-quality policy, and day, week, month, or year time grouping. Numeric pairs are clamped to the available bounds, reversed minimum/maximum pairs are corrected at the edited boundary, and submission is rejected for invalid dates, negative or non-numeric values, ranges outside the catalogue bounds, or a minimum above its maximum. Reset restores the default full range with matched depths only. To inspect daily variation, set the start and end dates, select \emph{Day} under \emph{Time grouping}, and press \emph{Apply filters}. Both time charts then use daily buckets, including zero-count days. Month is the default grouping; changing the draft selection alone does not update the charts.
 
-The implementation deliberately distinguishes event selection from depth eligibility. Date, magnitude, and category determine the catalogue rows used for event counts, magnitude summaries, exports, and result tables. The selected depth range and depth-quality policy then determine which of those rows contribute to depth averages, shallowest and deepest values, the depth histogram, and the magnitude--depth scatter plot. An event without an eligible depth therefore remains in non-depth analysis instead of disappearing from the catalogue summary.
+The implementation deliberately distinguishes event selection from depth eligibility. Date, magnitude, and category determine the catalogue rows used for event counts, magnitude summaries, exports, and result tables. The selected depth range and depth-quality policy then determine which of those rows contribute to depth averages, shallowest and deepest values, the depth histogram, and the magnitude--depth scatter plot. An event without an eligible depth therefore remains in non-depth analysis instead of disappearing from the catalogue summary. This separation prevents missing or unverified depth values from removing otherwise usable events from the magnitude and time analyses. For example, if 100 events satisfy the date, magnitude, and category filters but only 70 have depths eligible under the selected policy and range, the event count remains 100 while the average depth and depth charts use those 70 records. These numbers are illustrative. Changing only the depth range or quality policy therefore changes the depth-analysis subset, not the overall event count. The depth-quality summary makes this distinction visible, and enabling unverified MPGV depths explicitly broadens the eligible subset without treating those values as reviewed Quakes API depths.
 
 \subsubsection{Derived Summaries and Charts}
 
@@ -1382,12 +1393,12 @@ Time interaction & Stable wheel-listener references and delayed filter callbacks
 \end{tabular}
 \end{table}
 
-The renderer boundary is deliberate but should not be overinterpreted. MapLibre and deck.gl share the WebGL-oriented map composition, while React continues to coordinate state and DOM-based controls. Filtering before deck-data construction reduces the records passed to the marker layers when the selected range is narrow. Cached style and WFS requests avoid repeated downloads during ordinary mode toggling, and cleanup effects remove observers, intervals, pending animation frames, and map-overlay attachments. The repository does not contain controlled measurements proving a particular performance threshold, and Chapter~6 therefore records mechanisms rather than outcomes.
+Filtering before deck-data construction reduces the records passed to the marker layers when the selected range is narrow. Cached style and WFS requests avoid repeated downloads during ordinary mode toggling, and cleanup effects remove observers, intervals, pending animation frames, and map-overlay attachments.
 
 \subsection{Summary}
 \label{subsec:frontend_summary}
 
-The current frontend combines React and Vite application structure with a MapLibre map, deck.gl earthquake layers, and a separately loaded Insights route. \texttt{App.jsx} provides the shared state boundary; \texttt{api.js} supplies backend data; \texttt{MapComponent.jsx} manages mode-specific map instances, geographic sources, deck.gl attachment, overlays, and event interactions. Map, Satellite, Terrain, and Heatmap use the active OpenFreeMap, Esri, and IMO sources described above, and no Leaflet compatibility layer or self-hosted PMTiles map is part of this implementation.
+The current frontend combines React and Vite application structure with a MapLibre map, deck.gl earthquake layers, and a separately loaded Insights route. \texttt{App.jsx} provides the shared state boundary; \texttt{api.js} supplies backend data; \texttt{MapComponent.jsx} manages mode-specific map instances, geographic sources, deck.gl attachment, overlays, and event interactions.
 
 Client-side time and magnitude filters operate on the presentation-ready reconciled output without altering backend records. Timeline and Magnitude colour modes, volcanoes, EGDI/HIKE faults and fissures, the coordinate grid, Recent Selections, event-level ShakeMap access, and Map--Insights navigation are coordinated through explicit state rules. Responsive and accessibility features are present alongside identified code-level limitations, while performance discussion is restricted to mechanisms observable in the repository. Comparative discussion of other seismic platforms remains in Chapter~2, and backend reconciliation and validation remain in Chapters~4 and~5.
 
@@ -1397,7 +1408,6 @@ Client-side time and magnitude filters operate on the presentation-ready reconci
 \section{Testing and Deployment}
 \label{sec:testing-deployment}
 
-\subsection{Chapter Scope}
 
 This chapter verifies the implemented system through the automated backend and frontend suites, frontend linting and production-build checks, reproducible HTTP-level integration checks, and read-only inspection of the current University of Iceland Pluto deployment. The automated checks and public HTTP checks were repeated on 11~August~2026; the server-process inspection described below was performed on 10~August~2026. They establish observed software behaviour and deployment configuration; they are not a formal usability study, a performance benchmark, an availability guarantee, or a scientific validation of event matching.
 
@@ -1469,7 +1479,7 @@ The scheduler currently rebuilds the MPGV candidate from the discovered archive 
 
 MPGV source revisions are retained in the database, while the map and Insights page show only the accepted current version. Exposing a small revision history for an event would help explain changes in magnitude, depth, or coordinates over time. Operational logging could also report stale source data, repeated acquisition failures, and unusual revision volumes more clearly instead of requiring manual inspection of the server log.
 
-The published catalogue starts on 1~June~2020 and contains MPGV events at $M_w \geq 3.0$. Extending that range or adding another earthquake source would require a new, explicit catalogue policy. Earlier coverage would need checks for changes in MPGV page structure and for the availability of suitable Quakes records. An additional source should first be stored separately and evaluated as a matching or context source; it should not automatically change catalogue membership.
+The published catalogue follows the date and magnitude limits defined in Section~\ref{subsec:data-sources-scope}. Extending that range or adding another earthquake source would require a new, explicit catalogue policy. Earlier coverage would need checks for changes in MPGV page structure and for the availability of suitable Quakes records. An additional source should first be stored separately and evaluated as a matching or context source; it should not automatically change catalogue membership.
 
 \subsection{Interaction, Accessibility, and User Evaluation}
 
@@ -1785,6 +1795,60 @@ note            & String  & Association-policy marker; legacy entries are not re
 \hline
 \end{tabular}
 \end{table}
+
+\clearpage
+\section{Software Packages and Tools}
+\label{app:software-packages}
+
+This appendix provides a linked inventory of the principal software packages, runtimes, and tools used in MPGV Monitor. Each entry links to its official project site or documentation and states its role. The current implementation is identified from backend imports, frontend dependencies, test configuration, and deployment documentation. Earlier mapping platforms are listed separately to explain the development history.
+
+Package declarations and version constraints are recorded in \path{backend/requirements.txt}, \path{backend/requirements-dev.txt}, and \path{frontend/package.json}; the frontend lockfile records resolved dependencies. The backend requirements also retain historical and indirect dependencies, so that file should not be interpreted as a list of packages actively used by the current runtime. This inventory groups supporting packages by purpose rather than reproducing the entire transitive dependency tree. Official links were checked on 19~September~2026.
+
+\subsection*{Backend, Storage, and Acquisition}
+\begin{itemize}
+    \item \href{https://www.python.org/}{\textbf{Python}}: Backend language and runtime; standard-library modules support timestamps, CSV output, locking, and SQLite access.
+    \item \href{https://www.sqlite.org/}{\textbf{SQLite}}: Embedded relational database for source records, revisions, the canonical catalogue, and supporting metadata.
+    \item \href{https://flask.palletsprojects.com/}{\textbf{Flask}}: Web framework serving the backend API and built frontend.
+    \item \href{https://www.sqlalchemy.org/}{\textbf{SQLAlchemy}}: Object-relational mapping and database transactions.
+    \item \href{https://flask-sqlalchemy.palletsprojects.com/}{\textbf{Flask-SQLAlchemy}}: Integration of SQLAlchemy models and sessions with Flask.
+    \item \href{https://apscheduler.readthedocs.io/}{\textbf{APScheduler}}: Background scheduling of the recurring acquisition and reconciliation workflow.
+    \item \href{https://flask-limiter.readthedocs.io/}{\textbf{Flask-Limiter}}: Request-rate limits on backend endpoints.
+    \item \href{https://requests.readthedocs.io/}{\textbf{Requests}}: HTTP retrieval of earthquake and contextual data.
+    \item \href{https://www.crummy.com/software/BeautifulSoup/bs4/doc/}{\textbf{Beautiful Soup}}: Parsing of MPGV HTML archive tables; installed as \texttt{beautifulsoup4}.
+    \item \href{https://werkzeug.palletsprojects.com/}{\textbf{Werkzeug}}: Flask HTTP utilities, exception handling, and reverse-proxy middleware.
+    \item \href{https://pandas.pydata.org/}{\textbf{pandas}}: Tabular processing in the optional offline ShakeMap validation utility; outside the normal scheduled ingestion path.
+\end{itemize}
+
+\subsection*{Frontend and Visualisation}
+\begin{itemize}
+    \item \href{https://react.dev/}{\textbf{React and React DOM}}: Component structure, application state, and browser DOM rendering.
+    \item \href{https://maplibre.org/maplibre-gl-js/docs/}{\textbf{MapLibre GL JS}}: Map rendering, styles, geographic layers, and map interaction.
+    \item \href{https://visgl.github.io/react-map-gl/}{\textbf{react-map-gl}}: React components and hooks for the MapLibre map.
+    \item \href{https://deck.gl/}{\textbf{deck.gl}}: Earthquake scatterplot layers and picking through \texttt{@deck.gl/layers}, with map integration through \texttt{@deck.gl/mapbox}.
+    \item \href{https://axios-http.com/}{\textbf{Axios}}: Frontend HTTP requests to the backend API.
+    \item \href{https://recharts.org/}{\textbf{Recharts}}: Charts in the Insights interface.
+\end{itemize}
+
+\subsection*{Build, Testing, and Deployment}
+\begin{itemize}
+    \item \href{https://nodejs.org/}{\textbf{Node.js and npm}}: JavaScript tooling runtime; \href{https://www.npmjs.com/}{npm} installs frontend dependencies and runs project scripts.
+    \item \href{https://vite.dev/}{\textbf{Vite}}: Frontend development server and production build, with \texttt{@vitejs/plugin-react} for React integration.
+    \item \href{https://eslint.org/}{\textbf{ESLint}}: Static checks using \texttt{@eslint/js}, \texttt{globals}, and the React, React Hooks, and React Refresh plugins.
+    \item \href{https://github.com/DefinitelyTyped/DefinitelyTyped}{\textbf{React type definitions}}: Development type declarations supplied by \texttt{@types/react} and \texttt{@types/react-dom}.
+    \item \href{https://vitest.dev/}{\textbf{Vitest}}: Frontend test runner.
+    \item \href{https://testing-library.com/}{\textbf{Testing Library}}: Component rendering, user-interaction simulation, and DOM assertions through the React, user-event, and jest-dom packages.
+    \item \href{https://github.com/jsdom/jsdom}{\textbf{jsdom}}: Browser-like DOM environment for frontend tests.
+    \item \href{https://docs.pytest.org/}{\textbf{pytest}}: Backend automated tests and fixtures.
+    \item \href{https://gunicorn.org/}{\textbf{Gunicorn}}: WSGI application server for the Flask production deployment.
+    \item \href{https://nginx.org/}{\textbf{nginx}}: Deployment reverse proxy and HTTPS termination, managed outside the application packages.
+\end{itemize}
+
+\subsection*{Earlier Mapping Implementations}
+\begin{itemize}
+    \item \href{https://python-visualization.github.io/folium/latest/}{\textbf{Folium}}: Server-generated maps in the initial prototype.
+    \item \href{https://developers.google.com/maps/documentation/javascript/overview}{\textbf{Google Maps JavaScript API}}: Hosted mapping platform used in an intermediate React frontend; subsequently replaced because of its billing and credential requirements.
+    \item \href{https://leafletjs.com/}{\textbf{Leaflet and React-Leaflet}}: Intermediate open-source mapping implementation, with \href{https://react-leaflet.js.org/}{React-Leaflet} providing React integration; replaced by the current MapLibre/deck.gl architecture.
+\end{itemize}
 
 % ============================ BIBLIOGRAPHY ============================
 \clearpage
